@@ -1,9 +1,10 @@
 import socket
-
+from logging_functions import *
 MAX_BYTES = 1024
 
 serverPort = 67
 clientPort = 68
+
 
 
 class DHCP_server(object):
@@ -14,34 +15,40 @@ class DHCP_server(object):
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        s.bind(('', serverPort))
+
+        src = (socket.gethostbyname(socket.gethostname()), serverPort)
+        s.bind(src)
         dest = ('255.255.255.255', clientPort)
 
         while 1:
             try:
-                print("Wait DHCP discovery.")
+                # print("Wait DHCP discovery.")
                 data, address = s.recvfrom(MAX_BYTES)
-                print("Receive DHCP discovery.")
-                # print(data)
+                # print("Receive DHCP discovery.")
+                print(data)
+                log_message(MessageType.DHCPDISCOVER, src=address, dst=src)
 
-                print("Send DHCP offer.")
-                data = DHCP_server.offer_get()
+                # print("Send DHCP offer.")
+                data = self.offer_get()
                 s.sendto(data, dest)
+                log_message(MessageType.DHCPOFFER, src=src, dst=dest)
                 while 1:
                     try:
-                        print("Wait DHCP request.")
+                        # print("Wait DHCP request.")
                         data, address = s.recvfrom(MAX_BYTES)
-                        print("Receive DHCP request.")
+                        # print("Receive DHCP request.")
                         # print(data)
+                        log_message(MessageType.DHCPREQUEST, src=address, dst=src)
 
-                        print("Send DHCP pack.\n")
-                        data = DHCP_server.pack_get()
+                        # print("Send DHCP pack.\n")
+                        data = self.pack_get()
                         s.sendto(data, dest)
+                        log_message(MessageType.DHCPACK, src=src, dst=dest)
                         break
-                    except:
-                        raise
-            except:
-                raise
+                    except Exception as e:
+                        print(e)
+            except Exception as e:
+                print(e)
 
     def offer_get(self):
 

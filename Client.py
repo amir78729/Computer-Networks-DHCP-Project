@@ -1,36 +1,39 @@
 import socket, sys
+from logging_functions import *
 
 MAX_BYTES = 1024
 
-serverPort = 67
-clientPort = 68
+SERVER_PORT = 67
+CLIENT_PORT = 68
+
 
 
 class DHCP_client(object):
     def client(self):
         print("DHCP client is starting...\n")
-        dest = ('<broadcast>', serverPort)
+        dest = ('255.255.255.255', SERVER_PORT)
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        s.bind(('0.0.0.0', clientPort))
+        src = ('0.0.0.0', CLIENT_PORT)
+        s.bind(src)
 
-        print("Send DHCP discovery.")
-        data = DHCP_client.discover_get()
+        data = self.discover_get()
         s.sendto(data, dest)
+        log_message(MessageType.DHCPDISCOVER, src=src, dst=dest)
 
         data, address = s.recvfrom(MAX_BYTES)
-        print("Receive DHCP offer.")
         # print(data)
+        log_message(MessageType.DHCPOFFER, src=address, dst=src)
 
-        print("Send DHCP request.")
-        data = DHCP_client.request_get();
+        data = self.request_get()
         s.sendto(data, dest)
+        log_message(MessageType.DHCPREQUEST, src=src, dst=dest)
 
         data, address = s.recvfrom(MAX_BYTES)
-        print("Receive DHCP pack.\n")
         # print(data)
+        log_message(MessageType.DHCPACK, src=address, dst=src)
 
-    def discover_get():
+    def discover_get(self):
         OP = bytes([0x01])
         HTYPE = bytes([0x01])
         HLEN = bytes([0x06])
@@ -55,7 +58,7 @@ class DHCP_client(object):
 
         return package
 
-    def request_get():
+    def request_get(self):
         OP = bytes([0x01])
         HTYPE = bytes([0x01])
         HLEN = bytes([0x06])
