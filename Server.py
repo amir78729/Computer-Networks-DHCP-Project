@@ -1,6 +1,7 @@
 import socket
 import threading
 
+
 class Server:
     def __init__(self):
         self.PORT = 1234
@@ -18,8 +19,6 @@ class Server:
             conn, address = server.accept()
             t = threading.Thread(target=self.handle_client, args=(conn, address))
             t.start()
-    
-            
 
     def handle_client(self, conn, address):
         print('[NEW CONNECTION] connected from {}.'.format(address))
@@ -35,7 +34,7 @@ class Server:
                 print(e)
         conn.close()
 
+
 if __name__ == '__main__':
     server = Server()
     server.main()
-    
