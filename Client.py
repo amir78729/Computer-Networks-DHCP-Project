@@ -61,14 +61,14 @@ class DHCP_client(object):
         offer_info = parse_dhcp(offer)
         # print(data)
         log_message(MessageType.DHCPOFFER, src=get_ip_from_bytes(offer_info['siaddr']), dst=src[0])
-        print('OFFERED IP FROM {}: {}'.format(address[0], get_ip_from_bytes(offer_info['yiaddr'])))
+        print('OFFERED IP FROM {}: {}'.format(get_ip_from_bytes(offer_info['siaddr']), get_ip_from_bytes(offer_info['yiaddr'])))
 
         request = self.request_get(address[1], offer_info['yiaddr'])
         s.sendto(request, dest)
         log_message(MessageType.DHCPREQUEST, src=src[0], dst=dest[0])
 
         ack, address = s.recvfrom(MAX_BYTES)
-        log_message(MessageType.DHCPACK, src=address[0], dst=src[0])
+        log_message(MessageType.DHCPACK, src=get_ip_from_bytes(offer_info['siaddr']), dst=get_ip_from_bytes(offer_info['yiaddr']))
 
     def discover_get(self, mac):
         mac = str(mac).replace(":", "")
