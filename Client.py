@@ -1,14 +1,43 @@
-import socket, sys
+import socket
+import time
+import threading
+import struct
 from logging_functions import *
+from random import randint
+from uuid import getnode as get_mac
+import uuid
+
 
 MAX_BYTES = 1024
-
 SERVER_PORT = 67
 CLIENT_PORT = 68
+has_ip = False
+BACKOFF_CUTOFF = 120
+INITIAL_INTERVAL = 10
 
+def timer(t):
+    while t:
+        time.sleep(1)
+        t -= 1
+
+def parse_dhcp(p):
+    # print(p)
+    xid = p[4:8]  # bytes: 4, 5, 6, 7
+    info = {
+        'xid': p[4:8],
+        'secs': p[8:10],
+        'diaddr': p[12:16],
+        'yiaddr': p[16:20],
+        'siaddr': p[20:24],
+        'giaddr': p[24:28],
+        'chaddr': p[28:44]
+    }
+    return info
 
 
 class DHCP_client(object):
+
+
     def client(self):
         print("DHCP client is starting...\n")
         dest = ('255.255.255.255', SERVER_PORT)
@@ -17,72 +46,97 @@ class DHCP_client(object):
         src = ('0.0.0.0', CLIENT_PORT)
         s.bind(src)
 
-        data = self.discover_get()
-        s.sendto(data, dest)
-        log_message(MessageType.DHCPDISCOVER, src=src, dst=dest)
+        mac = ':'.join(['{:02x}'.format((uuid.getnode() >> ele) & 0xff) for ele in range(0,8*6,8)][::-1])
+        print(mac)
 
-        data, address = s.recvfrom(MAX_BYTES)
+        discover = self.discover_get(mac)
+        s.sendto(discover, dest)
+
+        # parse_dhcp(discover)
+
+        log_message(MessageType.DHCPDISCOVER, src=get_ip_from_bytes(parse_dhcp(discover)['yiaddr']), dst=dest[0])
+
+        offer, address = s.recvfrom(MAX_BYTES)
+
+        offer_info = parse_dhcp(offer)
         # print(data)
-        log_message(MessageType.DHCPOFFER, src=address, dst=src)
+        log_message(MessageType.DHCPOFFER, src=get_ip_from_bytes(offer_info['siaddr']), dst=src[0])
+        print('OFFERED IP FROM {}: {}'.format(address[0], get_ip_from_bytes(offer_info['yiaddr'])))
 
-        data = self.request_get()
-        s.sendto(data, dest)
-        log_message(MessageType.DHCPREQUEST, src=src, dst=dest)
+        request = self.request_get(address[1], offer_info['yiaddr'])
+        s.sendto(request, dest)
+        log_message(MessageType.DHCPREQUEST, src=src[0], dst=dest[0])
 
-        data, address = s.recvfrom(MAX_BYTES)
-        # print(data)
-        log_message(MessageType.DHCPACK, src=address, dst=src)
+        ack, address = s.recvfrom(MAX_BYTES)
+        log_message(MessageType.DHCPACK, src=address[0], dst=src[0])
 
-    def discover_get(self):
-        OP = bytes([0x01])
-        HTYPE = bytes([0x01])
-        HLEN = bytes([0x06])
-        HOPS = bytes([0x00])
-        XID = bytes([0x39, 0x03, 0xF3, 0x26])
-        SECS = bytes([0x00, 0x00])
-        FLAGS = bytes([0x00, 0x00])
-        CIADDR = bytes([0x00, 0x00, 0x00, 0x00])
-        YIADDR = bytes([0x00, 0x00, 0x00, 0x00])
-        SIADDR = bytes([0x00, 0x00, 0x00, 0x00])
-        GIADDR = bytes([0x00, 0x00, 0x00, 0x00])
-        CHADDR1 = bytes([0x00, 0x05, 0x3C, 0x04])
-        CHADDR2 = bytes([0x8D, 0x59, 0x00, 0x00])
-        CHADDR3 = bytes([0x00, 0x00, 0x00, 0x00])
-        CHADDR4 = bytes([0x00, 0x00, 0x00, 0x00])
-        CHADDR5 = bytes(192)
-        Magiccookie = bytes([0x63, 0x82, 0x53, 0x63])
-        DHCPOptions1 = bytes([53, 1, 1])
-        DHCPOptions2 = bytes([50, 4, 0xC0, 0xA8, 0x01, 0x64])
+    def discover_get(self, mac):
+        mac = str(mac).replace(":", "")
+        mac = bytes.fromhex(mac)
+        global Mac, XID
+        # macb = getMacInBytes()
+        Mac = mac
+        transactionID = ''
 
-        package = OP + HTYPE + HLEN + HOPS + XID + SECS + FLAGS + CIADDR + YIADDR + SIADDR + GIADDR + CHADDR1 + CHADDR2 + CHADDR3 + CHADDR4 + CHADDR5 + Magiccookie + DHCPOptions1 + DHCPOptions2
+        for i in range(4):
+            t = randint(0, 255)
+            t = str(hex(t//16)).replace('0x', '')+str(hex(t%16)).replace('0x', '')
+            transactionID += t
+        # print(transactionID)
+        XID = bytearray.fromhex(transactionID)
+        # print('xid',XID)
 
-        return package
+        packet = b''
+        packet += b'\x01'  # Message type: Boot Request (1)
+        packet += b'\x01'  # Hardware type: Ethernet
+        packet += b'\x06'  # Hardware address length: 6
+        packet += b'\x00'  # Hops: 0
+        packet += XID  # Transaction ID
+        packet += b'\x00\x00'  # Seconds elapsed: 0
+        packet += b'\x80\x00'  # Bootp flags: 0x8000 (Broadcast) + reserved flags
+        packet += b'\x00\x00\x00\x00'  # Client IP address: 0.0.0.0
+        packet += b'\x00\x00\x00\x00'  # Your (client) IP address: 0.0.0.0
+        packet += b'\x00\x00\x00\x00'  # Next server IP address: 0.0.0.0
+        packet += b'\x00\x00\x00\x00'  # Relay agent IP address: 0.0.0.0
+        packet += mac  # Client MAC address:  "FF:C1:9A:D6:3E:00
+        # packet += macb
+        packet += b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'  # Client hardware address padding: 00000000000000000000
+        packet += b'\x00' * 67  # Server host name not given
+        packet += b'\x00' * 125  # Boot file name not given
+        packet += b'\x63\x82\x53\x63'  # Magic cookie: DHCP
+        # DHCP IP Address
+        packet += b'\x35\x01\x01'  # Option: (t=53,l=1) DHCP Message Type = DHCP Discover
 
-    def request_get(self):
-        OP = bytes([0x01])
-        HTYPE = bytes([0x01])
-        HLEN = bytes([0x06])
-        HOPS = bytes([0x00])
-        XID = bytes([0x39, 0x03, 0xF3, 0x26])
-        SECS = bytes([0x00, 0x00])
-        FLAGS = bytes([0x00, 0x00])
-        CIADDR = bytes([0x00, 0x00, 0x00, 0x00])
-        YIADDR = bytes([0x00, 0x00, 0x00, 0x00])
-        SIADDR = bytes([0x00, 0x00, 0x00, 0x00])
-        GIADDR = bytes([0x00, 0x00, 0x00, 0x00])
-        CHADDR1 = bytes([0x00, 0x0C, 0x29, 0xDD])
-        CHADDR2 = bytes([0x5C, 0xA7, 0x00, 0x00])
-        CHADDR3 = bytes([0x00, 0x00, 0x00, 0x00])
-        CHADDR4 = bytes([0x00, 0x00, 0x00, 0x00])
-        CHADDR5 = bytes(192)
-        Magiccookie = bytes([0x63, 0x82, 0x53, 0x63])
-        DHCPOptions1 = bytes([53, 1, 3])
-        DHCPOptions2 = bytes([50, 4, 0xC0, 0xA8, 0x01, 0x64])
-        DHCPOptions3 = bytes([54, 4, 0xC0, 0xA8, 0x01, 0x01])
+        return packet
 
-        package = OP + HTYPE + HLEN + HOPS + XID + SECS + FLAGS + CIADDR + YIADDR + SIADDR + GIADDR + CHADDR1 + CHADDR2 + CHADDR3 + CHADDR4 + CHADDR5 + Magiccookie + DHCPOptions1 + DHCPOptions2 + DHCPOptions3
+    def request_get(self, serverip, offerip):
+        # offerip = bytes(map(int, str(offerip).split('.')))
+        serverip = bytes(map(int, str(serverip).split('.')))
 
-        return package
+        packet = b''
+        packet += b'\x01'  # Message type: Boot Request (1)
+        packet += b'\x01'  # Hardware type: Ethernet
+        packet += b'\x06'  # Hardware address length: 6
+        packet += b'\x00'  # Hops: 0
+
+        # print(xid_hex)
+        packet += XID  # Transaction ID
+        packet += b'\x00\x00'  # Seconds elapsed: 0
+        packet += b'\x80\x00'  # Bootp flags: 0x8000 (Broadcast) + reserved flags
+        packet += b'\x00\x00\x00\x00'  # Client IP address: 0.0.0.0
+        packet += offerip  # Your (client) IP address: 0.0.0.0
+        packet += serverip  # Next server IP address: 0.0.0.0
+        packet += b'\x00\x00\x00\x00'  # Relay agent IP address: 0.0.0.0
+        # packet += b'\x00\x26\x9e\x04\x1e\x9b'   #Client MAC address: 00:26:9e:04:1e:9b
+        packet += b'\xEE\xC1\x9A\xD6\x3E\x00'
+        packet += b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'  # Client hardware address padding: 00000000000000000000
+        packet += b'\x00' * 67  # Server host name not given
+        packet += b'\x00' * 125  # Boot file name not given
+        packet += b'\x63\x82\x53\x63'  # Magic cookie: DHCP
+        # DHCP IP Address
+        packet += b'\x35\x01\x03'  # Option: (t=53,l=1) DHCP Message Type = DHCP Discover
+
+        return packet
 
 
 if __name__ == '__main__':

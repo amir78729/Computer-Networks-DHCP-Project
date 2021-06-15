@@ -1,10 +1,11 @@
 import socket
+import sys
+import os
 from logging_functions import *
 MAX_BYTES = 1024
 
 serverPort = 67
 clientPort = 68
-
 
 
 class DHCP_server(object):
@@ -23,89 +24,112 @@ class DHCP_server(object):
         while 1:
             try:
                 # print("Wait DHCP discovery.")
-                data, address = s.recvfrom(MAX_BYTES)
+                discover, address = s.recvfrom(MAX_BYTES)
+
                 # print("Receive DHCP discovery.")
-                print(data)
-                log_message(MessageType.DHCPDISCOVER, src=address, dst=src)
+                # print(discover)
+                discover_info = parse_dhcp(discover)
+                log_message(MessageType.DHCPDISCOVER, src=get_ip_from_bytes(discover_info['yiaddr']), dst=src[0])
 
                 # print("Send DHCP offer.")
-                data = self.offer_get()
-                s.sendto(data, dest)
-                log_message(MessageType.DHCPOFFER, src=src, dst=dest)
+                offer = self.offer_get('1.2.3.4', discover_info['xid'], discover_info['mac'])
+                s.sendto(offer, dest)
+                log_message(MessageType.DHCPOFFER, src=src[0], dst=dest[0])
                 while 1:
                     try:
                         # print("Wait DHCP request.")
-                        data, address = s.recvfrom(MAX_BYTES)
+                        request, address = s.recvfrom(MAX_BYTES)
                         # print("Receive DHCP request.")
                         # print(data)
                         log_message(MessageType.DHCPREQUEST, src=address, dst=src)
 
                         # print("Send DHCP pack.\n")
-                        data = self.pack_get()
-                        s.sendto(data, dest)
+                        ack = self.pack_get()
+                        s.sendto(ack, dest)
                         log_message(MessageType.DHCPACK, src=src, dst=dest)
                         break
                     except Exception as e:
                         print(e)
             except Exception as e:
+                exc_type, exc_obj, exc_tb = sys.exc_info()
+                fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+                print(exc_type, fname, exc_tb.tb_lineno)
                 print(e)
 
-    def offer_get(self):
+    def offer_get(self, offer_ip, xid, mac):
+        try:
+            ip_as_bytes = bytes(map(int, str(offer_ip).split('.')))
+            serverip = bytes(map(int, str("127.0.0.1").split('.')))
 
-        OP = bytes([0x02])
-        HTYPE = bytes([0x01])
-        HLEN = bytes([0x06])
-        HOPS = bytes([0x00])
-        XID = bytes([0x39, 0x03, 0xF3, 0x26])
-        SECS = bytes([0x00, 0x00])
-        FLAGS = bytes([0x00, 0x00])
-        CIADDR = bytes([0x00, 0x00, 0x00, 0x00])
-        YIADDR = bytes([0xC0, 0xA8, 0x01, 0x64])  # 192.168.1.100
-        SIADDR = bytes([0xC0, 0xA8, 0x01, 0x01])  # 192.168.1.1
-        GIADDR = bytes([0x00, 0x00, 0x00, 0x00])
-        CHADDR1 = bytes([0x00, 0x05, 0x3C, 0x04])
-        CHADDR2 = bytes([0x8D, 0x59, 0x00, 0x00])
-        CHADDR3 = bytes([0x00, 0x00, 0x00, 0x00])
-        CHADDR4 = bytes([0x00, 0x00, 0x00, 0x00])
-        CHADDR5 = bytes(192)
-        Magiccookie = bytes([0x63, 0x82, 0x53, 0x63])
-        DHCPOptions1 = bytes([53, 1, 2])  # DHCP Offer
-        DHCPOptions2 = bytes([1, 4, 0xFF, 0xFF, 0xFF, 0x00])  # 255.255.255.0 subnet mask
-        DHCPOptions3 = bytes([3, 4, 0xC0, 0xA8, 0x01, 0x01])  # 192.168.1.1 router
-        DHCPOptions4 = bytes([51, 4, 0x00, 0x01, 0x51, 0x80])  # 86400s(1 day) IP address lease time
-        DHCPOptions5 = bytes([54, 4, 0xC0, 0xA8, 0x01, 0x01])  # DHCP server
+            packet = b''
+            packet += b'\x02'   # op
+            packet += b'\x01'   # Hardware type: Ethernet
+            packet += b'\x06'   # Hardware address length: 6
+            packet += b'\x00'   # Hops: 0
+            # print("xidddd{}".format(xid))
+            # xid_hex = hex(xid).split('x')[-1]
+            # print(xid_hex)
+            # packet += bytearray.fromhex(xid_hex)  # Transaction ID
+            packet += xid
+            # TODO HANDLE ID FOR EACH CLIENT
+            packet += b'\x00\x00'  # Seconds elapsed: 0
+            packet += b'\x00\x00'  # Bootp flags: 0x8000 (Broadcast) + reserved flags
+            packet += b'\x00\x00\x00\x00'  # Client IP address: 0.0.0.0
+            packet += ip_as_bytes  # Your (client) IP address: 0.0.0.0
+            packet += serverip  # Next server IP address: 0.0.0.0
+            packet += b'\x00\x00\x00\x00'  # Relay agent IP address: 0.0.0.0
+            # packet += b'\x00\x26\x9e\x04\x1e\x9b'   #Client MAC address: 00:26:9e:04:1e:9b
+            # mac = self.connected_clients_list[xid]
+            # mac = str(mac).replace(':', '')
+            # packet += bytearray.fromhex(mac)
+            print(mac)
+            packet += mac
+            packet += b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'  # Client hardware address padding: 00000000000000000000
+            packet += b'\x00' * 67  # Server host name not given
+            packet += b'\x00' * 125  # Boot file name not given
+            packet += b'\x63\x82\x53\x63'  # Magic cookie: DHCP
+            # DHCP IP Address
+            packet += b'\x35\x01\x02'  # Option: (t=53,l=1) DHCP Message Type = DHCP Discover
 
-        package = OP + HTYPE + HLEN + HOPS + XID + SECS + FLAGS + CIADDR + YIADDR + SIADDR + GIADDR + CHADDR1 + CHADDR2 + CHADDR3 + CHADDR4 + CHADDR5 + Magiccookie + DHCPOptions1 + DHCPOptions2 + DHCPOptions3 + DHCPOptions4 + DHCPOptions5
+            return packet
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            print(e)
 
-        return package
+    def pack_get(self, offer_ip, xid, mac):
+        ip_as_bytes = convert_ip_to_hex(offer_ip)
+        serverip = bytes(map(int, str("127.0.0.1").split('.')))
 
-    def pack_get(self):
-        OP = bytes([0x02])
-        HTYPE = bytes([0x01])
-        HLEN = bytes([0x06])
-        HOPS = bytes([0x00])
-        XID = bytes([0x39, 0x03, 0xF3, 0x26])
-        SECS = bytes([0x00, 0x00])
-        FLAGS = bytes([0x00, 0x00])
-        CIADDR = bytes([0x00, 0x00, 0x00, 0x00])
-        YIADDR = bytes([0xC0, 0xA8, 0x01, 0x64])
-        SIADDR = bytes([0xC0, 0xA8, 0x01, 0x01])
-        GIADDR = bytes([0x00, 0x00, 0x00, 0x00])
-        CHADDR1 = bytes([0x00, 0x05, 0x3C, 0x04])
-        CHADDR2 = bytes([0x8D, 0x59, 0x00, 0x00])
-        CHADDR3 = bytes([0x00, 0x00, 0x00, 0x00])
-        CHADDR4 = bytes([0x00, 0x00, 0x00, 0x00])
-        CHADDR5 = bytes(192)
-        Magiccookie = bytes([0x63, 0x82, 0x53, 0x63])
-        DHCPOptions1 = bytes([53, 1, 5])  # DHCP ACK(value = 5)
-        DHCPOptions2 = bytes([1, 4, 0xFF, 0xFF, 0xFF, 0x00])  # 255.255.255.0 subnet mask
-        DHCPOptions3 = bytes([3, 4, 0xC0, 0xA8, 0x01, 0x01])  # 192.168.1.1 router
-        DHCPOptions4 = bytes([51, 4, 0x00, 0x01, 0x51, 0x80])  # 86400s(1 day) IP address lease time
-        DHCPOptions5 = bytes([54, 4, 0xC0, 0xA8, 0x01, 0x01])  # DHCP server
+        packet = b''
+        packet += b'\x02'
+        packet += b'\x01'  # Hardware type: Ethernet
+        packet += b'\x06'  # Hardware address length: 6
+        packet += b'\x00'  # Hops: 0
 
-        package = OP + HTYPE + HLEN + HOPS + XID + SECS + FLAGS + CIADDR + YIADDR + SIADDR + GIADDR + CHADDR1 + CHADDR2 + CHADDR3 + CHADDR4 + CHADDR5 + Magiccookie + DHCPOptions1 + DHCPOptions2 + DHCPOptions3 + DHCPOptions4 + DHCPOptions5
+        xid_hex = hex(xid).split('x')[-1]
+        print(xid_hex)
+        packet += bytes.fromhex(xid_hex)  # Transaction ID
+        # TODO HANDLE ID FOR EACH CLIENT
+        packet += b'\x00\x00'  # Seconds elapsed: 0
+        packet += b'\x00\x00'  # Bootp flags: 0x8000 (Broadcast) + reserved flags
+        packet += b'\x00\x00\x00\x00'  # Client IP address: 0.0.0.0
+        packet += ip_as_bytes  # Your (client) IP address: 0.0.0.0
+        packet += serverip  # Next server IP address: 0.0.0.0
+        packet += b'\x00\x00\x00\x00'  # Relay agent IP address: 0.0.0.0
+        # packet += b'\x00\x26\x9e\x04\x1e\x9b'   #Client MAC address: 00:26:9e:04:1e:9b
+        # mac = self.connected_clients_list[xid]
+        mac = str(mac).replace(':', '')
+        packet += bytes.fromhex(mac)
+        packet += b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'  # Client hardware address padding: 00000000000000000000
+        packet += b'\x00' * 67  # Server host name not given
+        packet += b'\x00' * 125  # Boot file name not given
+        packet += b'\x63\x82\x53\x63'  # Magic cookie: DHCP
+        # DHCP IP Address
+        packet += b'\x35\x01\x05'  # Option: (t=53,l=1) DHCP Message Type = DHCP Discover
 
-        return package
+        return packet
 
 
 if __name__ == '__main__':
