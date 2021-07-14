@@ -31,19 +31,20 @@ clientPort = 68
 
 
 def buildPacket_discovery(mac):
+    print('BUILDING DISCOVER PACKET...', end='')
     mac = str(mac).replace(":", "")
     mac = bytes.fromhex(mac)
     global Mac, XID
     # macb = getMacInBytes()
     Mac = mac
-    print(Mac)
+    # print(Mac)
     transactionID = b''
 
     for i in range(4):
         t = randint(0, 255)
         transactionID += struct.pack('!B', t)
     XID = transactionID
-    print(XID)
+    # print(XID)
 
     packet = b''
     packet += b'\x01'  # Message type: Boot Request (1)
@@ -65,14 +66,13 @@ def buildPacket_discovery(mac):
     packet += b'\x63\x82\x53\x63'  # Magic cookie: DHCP
     # DHCP IP Address
     packet += b'\x35\x01\x01'
-
+    print('DONE')
     return packet
 
 
 def buildPacket_request(serverip, offerip):
-    offerip = bytes(map(int, str(offerip).split('.')))
-    serverip = bytes(map(int, str(serverip).split('.')))
-    global Mac
+    print('BUILDING REQUEST PACKET...', end='')
+    # serverip = bytes(map(int, str(serverip).split('.')))
 
     packet = b''
     packet += b'\x01'  # Message type: Boot Request (1)
@@ -89,14 +89,14 @@ def buildPacket_request(serverip, offerip):
     packet += serverip  # Next server IP address: 0.0.0.0
     packet += b'\x00\x00\x00\x00'  # Relay agent IP address: 0.0.0.0
     # packet += b'\x00\x26\x9e\x04\x1e\x9b'   #Client MAC address: 00:26:9e:04:1e:9b
-    packet += Mac
+    packet += b'\xEE\xC1\x9A\xD6\x3E\x00'
     packet += b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'  # Client hardware address padding: 00000000000000000000
     packet += b'\x00' * 67  # Server host name not given
     packet += b'\x00' * 125  # Boot file name not given
     packet += b'\x63\x82\x53\x63'  # Magic cookie: DHCP
     # DHCP IP Address
     packet += b'\x35\x01\x03'  # Option: (t=53,l=1) DHCP Message Type = DHCP Discover
-
+    print('DONE')
     return packet
 
 
@@ -121,7 +121,10 @@ def parse_packet_client(pkt):
 def start_process(mac):
     global dis_time
     sock.settimeout(2)
-    sock.sendto(buildPacket_discovery(mac), ('<broadcast>', 68))
+    discover = buildPacket_discovery(mac)
+    sock.sendto(discover, ('<broadcast>', 68))
+    log_message(MessageType.DHCPDISCOVER, src=get_ip_from_bytes(parse_dhcp(discover)['yiaddr']), dst='255.255.255.255')
+    print('WAITING FOR THE DHCP SERVER...')
     get_ip = False
     getAck = False
     # timer_thread=threading.Thread(target=discovery_timer,args=(ds_time,))
@@ -131,85 +134,96 @@ def start_process(mac):
     # offer
 
     msg, b = sock.recvfrom(1024)
+    offer_info = parse_dhcp(msg)
+    log_message(MessageType.DHCPOFFER, src=get_ip_from_bytes(offer_info['siaddr']), dst='0.0.0.0')
     try:
-        data = msg.decode()
+        data = msg.decode('utf-8')
         if "reserved" in data:
             getAck = True
             get_ip = True
-        print(data)
+        # print(data)
     except (UnicodeDecodeError, AttributeError):
-        print(pkt_type(msg))
+        # print(pkt_type(msg))
         parse_info = parse_dhcp(msg)
         offerip, serverip, mac = parse_info['yiaddr'], parse_info['siaddr'], parse_info['mac']
-        print("offer {} for {}:".format(offer_ip, mac))
-        print(offerip)
-
-        sock.sendto(buildPacket_request(serverip, offerip), (str(serverip), 68))
-        print("send request")
+        print("offer ip \"{}\" for \"{}\":".format(get_ip_from_bytes(offerip), get_mac_from_bytes(mac)).upper())
+        # print(offerip)
+        request = buildPacket_request(serverip, offerip)
+        sock.sendto(request, (get_ip_from_bytes(offerip), 68))
+        log_message(MessageType.DHCPREQUEST, src='0.0.0.0', dst=get_ip_from_bytes(offer_info['siaddr']))
         getAck = False
 
         try:
             msg, b = sock.recvfrom(1024)
             if msg:
-                print("Ack {}".format(msg))
+                print('ACK RECEIVED!')
+                log_message(MessageType.DHCPACK, src=get_ip_from_bytes(offer_info['siaddr']),
+                            dst=get_ip_from_bytes(offer_info['yiaddr']))
+                # print("Ack {}".format(msg))
                 getAck = True
         except socket.timeout:
-            print("Time out ...")
+            print("Time out ...".upper())
 
         if getAck == False:
-            print("time out!!")
+            print("NO ACK FOUNDED")
             # continue
         else:
-            print("No time out :)")
+            print("ACK RECEIVED:)")
             get_ip = True
 
     return getAck, get_ip
 
 
-def start_process2(mac):
-    global dis_time
-    sock.settimeout(4)
-    sock.sendto(buildPacket_discovery(mac), ('<broadcast>', 68))
-    get_ip = False
-    getAck = False
-    while not getAck:
-        msg, b = sock.recvfrom(1024)
-        try:
-            data = msg.decode()
-            if "reserved" in data or "renew" in data:
-                getAck = True
-                get_ip = True
-            print(data)
-        except (UnicodeDecodeError, AttributeError):
-            print(pkt_type(msg))
-            parse_info = parse_dhcp(msg)
-            offerip, serverip, mac = parse_info['yiaddr'], parse_info['siaddr'], parse_info['mac']
-            print("offer {} for {}:".format(offer_ip, mac))
-            print(offerip)
-
-            sock.sendto(buildPacket_request(serverip, offerip), (str(serverip), 68))
-            print("send request")
-            # getAck = False
-
-            try:
-                msg, b = sock.recvfrom(1024)
-
-                if msg:
-                    print("Ack {}".format(msg))
-                    getAck = True
-            except socket.timeout:
-                print("Time out ...")
-                getAck = False
-                continue
-
-            if getAck == False:
-                print("time out!!")
-                # continue
-            else:
-                print("No time out :)")
-                get_ip = True
-
-        return getAck, get_ip
+# def start_process2(mac):
+#     global dis_time
+#     sock.settimeout(4)
+#     discover = buildPacket_discovery(mac)
+#     sock.sendto(discover, ('<broadcast>', 68))
+#     log_message(MessageType.DHCPDISCOVER, src=get_ip_from_bytes(parse_dhcp(discover)['yiaddr']), dst='255.255.255.255')
+#     get_ip = False
+#     getAck = False
+#     while not getAck:
+#         msg, b = sock.recvfrom(1024)
+#         offer_info = parse_dhcp(msg)
+#         log_message(MessageType.DHCPOFFER, src=get_ip_from_bytes(offer_info['siaddr']), dst='0.0.0.0')
+#         try:
+#             data = msg.decode()
+#             if "reserved" in data or "renew" in data:
+#                 getAck = True
+#                 get_ip = True
+#             print(data)
+#         except (UnicodeDecodeError, AttributeError):
+#             # print(pkt_type(msg))
+#             parse_info = parse_dhcp(msg)
+#             offerip, serverip, mac = parse_info['yiaddr'], parse_info['siaddr'], parse_info['mac']
+#             # print("offer {} for {}:".format(offer_ip, mac))
+#             # print(offerip)
+#             print(b[1])
+#             print(serverip)
+#             request = buildPacket_request(b[1], offerip)
+#             sock.sendto(request, (str(serverip), 68))
+#             print("send request")
+#             # getAck = False
+#
+#             try:
+#                 msg, b = sock.recvfrom(1024)
+#
+#                 if msg:
+#                     print("Ack {}".format(msg))
+#                     getAck = True
+#             except socket.timeout:
+#                 print("Time out ...")
+#                 getAck = False
+#                 continue
+#
+#             if getAck == False:
+#                 print("time out!!")
+#                 # continue
+#             else:
+#                 print("No time out :)")
+#                 get_ip = True
+#
+#         return getAck, get_ip
 
 
 def discovery_timer(initial_interval):

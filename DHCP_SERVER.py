@@ -54,14 +54,14 @@ class Server:
                 self.OccupyIP.append(self.data["reservation_list"][key])
 
     def handle_client(self, xid, mac, addrss,server):
-        print('handle client')
+        # print('handle client')
         if mac not in self.client_ips:
-            print('mac not in self.client_ips')
+            # print('mac not in self.client_ips')
             macUpper = str(mac).upper()
             block = self.block_or_not(macUpper)
             reserve = self.reserved_or_not(macUpper)
 
-            print(reserve)
+            # print(reserve)
             if block:
                 print("This client is blocked")
                 string = "You are blocked "
@@ -88,7 +88,7 @@ class Server:
                     flag = True
                     offer = 0
                     offer_ip = ""
-                    while (flag):
+                    while flag:
 
                         offer = random.randint(self.startInterval, self.stopInterval)
                         offer_ip = self.long2ip(offer)
@@ -96,18 +96,19 @@ class Server:
                         if offer_ip in self.OccupyIP and offer_ip in self.waitIP:
                             continue
                         else:
-                            print("Server want offer {}".format(offer_ip))
+                            print("CANDIDATE IP: {}".format(offer_ip))
                             self.waitIP.append(offer_ip)
                             flag = False
 
-                    print("lets offer to {}".format(get_mac_from_bytes(mac)))
+                    # print("lets offer to {}".format(get_mac_from_bytes(mac)))
                     pkt = self.buildPacket_offer(offer_ip, xid, mac)
                     self.sock.sendto(pkt, ('255.255.255.255', 67))
                     log_message(MessageType.DHCPOFFER, src=socket.gethostbyname(socket.gethostname()), dst='255.255.255.255')
 
                     msg, client = server.recvfrom(1024)
-                    parse_info = parse_dhcp(msg)
-                    xid, chaddrss = parse_info['xid'], parse_info['chaddr']
+                    request_info = parse_dhcp(msg)
+                    xid, chaddrss = request_info['xid'], request_info['chaddr']
+                    log_message(MessageType.DHCPREQUEST, src=get_ip_from_bytes(request_info['yiaddr']), dst='255.255.255.255')
 
                     pkt = self.buildPacket_Ack(offer_ip, xid, mac)
                     # start lease time timer
@@ -155,7 +156,7 @@ class Server:
 
             parse_info = parse_dhcp(msg)
             client_xid, client_mac = parse_info['xid'], parse_info['mac']
-            print("Client xid {}".format(client_xid))
+            # print("Client xid {}".format(client_xid))
             server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             server.bind(("127.0.0.1", 68))
@@ -193,7 +194,7 @@ class Server:
 
 
     def buildPacket_offer(self, offer_ip, xid, mac):
-        print('building offer packet...')
+        print('building offer packet...'.upper(), end='')
         try:
             ip_as_bytes = bytes(map(int, str(offer_ip).split('.')))
             serverip = bytes(map(int, str("127.0.0.1").split('.')))
@@ -226,7 +227,7 @@ class Server:
             packet += b'\x63\x82\x53\x63'  # Magic cookie: DHCP
             # DHCP IP Address
             packet += b'\x35\x01\x02'  # Option: (t=53,l=1) DHCP Message Type = DHCP Discover
-            print('...done')
+            print('DONE')
             return packet
         except Exception as e:
             exc_type, exc_obj, exc_tb = sys.exc_info()
@@ -236,6 +237,7 @@ class Server:
 
 
     def buildPacket_Ack(self, offer_ip, xid, mac):
+        print('BUILDING ACK PACKET...', end='')
         ip_as_bytes = bytes(map(int, str(offer_ip).split('.')))
         serverip = bytes(map(int, str("127.0.0.1").split('.')))
 
@@ -246,7 +248,7 @@ class Server:
         packet += b'\x00'  # Hops: 0
 
         xid_hex = hex(xid).split('x')[-1]
-        print(xid_hex)
+        # print(xid_hex)
         packet += bytes.fromhex(xid_hex)  # Transaction ID
 
         packet += b'\x00\x00'  # Seconds elapsed: 0
@@ -265,7 +267,7 @@ class Server:
         packet += b'\x63\x82\x53\x63'  # Magic cookie: DHCP
         # DHCP IP Address
         packet += b'\x35\x01\x05'
-
+        print("DONE")
         return packet
 
 
@@ -287,8 +289,8 @@ class Server:
 
     def reserved_or_not(self, mac):
         reserved = False
-        print(self.reserved)
-        print(mac)
+        # print(self.reserved)
+        # print(mac)
         if str(mac) in self.reserved:
             reserved = True
         return reserved
