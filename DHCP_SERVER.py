@@ -1,6 +1,8 @@
 import ipaddress
 import json
+import os
 import struct
+import sys
 import threading
 import socket
 import logging
@@ -18,7 +20,7 @@ class Server:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        self.sock.bind(('', 68))
+        self.sock.bind((socket.gethostbyname(socket.gethostname()), 68))
         self.connected_clients_list = dict()
         # self.clients = []
         self.OccupyIP = []
@@ -32,28 +34,29 @@ class Server:
         self.stopInterval = 0
         self.serverIP = socket.gethostbyname(socket.gethostname())
         f = open("configs.json")
-        data = json.load(f)
+        self.data = json.load(f)
         f.close()
-        self.pool_mode = data["pool_mode"]
-        self.range_from = data["range"]["from"]
-        self.range_to = data["range"]["to"]
-        self.subnet_block = data["subnet"]["ip_block"]
-        self.subnet_mask = data["subnet"]["subnet_mask"]
-        self.lease_time = data["lease_time"]
+        self.pool_mode = self.data["pool_mode"]
+        self.range_from = self.data["range"]["from"]
+        self.range_to = self.data["range"]["to"]
+        self.subnet_block = self.data["subnet"]["ip_block"]
+        self.subnet_mask = self.data["subnet"]["subnet_mask"]
+        self.lease_time = self.data["lease_time"]
         if self.pool_mode == "range":
             self.startInterval = self.ip2long(self.range_from)
             self.stopInterval = self.ip2long(self.range_to)
         elif self.pool_mode == "subnet":
             self.startInterval = self.ip2long(self.subnet_block)
             self.stopInterval = self.ip2long(self.subnet_mask)
-        if len(data["reservation_list"]) != 0:
-            for key in data["reservation_list"]:
-                self.reserved[key] = data["reservation_list"][key]
-                self.OccupyIP.append(data["reservation_list"][key])
+        if len(self.data["reservation_list"]) != 0:
+            for key in self.data["reservation_list"]:
+                self.reserved[key] = self.data["reservation_list"][key]
+                self.OccupyIP.append(self.data["reservation_list"][key])
 
     def handle_client(self, xid, mac, addrss,server):
-
+        print('handle client')
         if mac not in self.client_ips:
+            print('mac not in self.client_ips')
             macUpper = str(mac).upper()
             block = self.block_or_not(macUpper)
             reserve = self.reserved_or_not(macUpper)
@@ -90,24 +93,21 @@ class Server:
                         offer = random.randint(self.startInterval, self.stopInterval)
                         offer_ip = self.long2ip(offer)
 
-                        if offer_ip in self.OccupyIP and offer_ip in self.waitIP :
+                        if offer_ip in self.OccupyIP and offer_ip in self.waitIP:
                             continue
                         else:
                             print("Server want offer {}".format(offer_ip))
                             self.waitIP.append(offer_ip)
-
                             flag = False
-                    print("lets offer to {}".format(mac))
+
+                    print("lets offer to {}".format(get_mac_from_bytes(mac)))
                     pkt = self.buildPacket_offer(offer_ip, xid, mac)
                     self.sock.sendto(pkt, ('255.255.255.255', 67))
-                    msg, client = server.recvfrom(1024)
+                    log_message(MessageType.DHCPOFFER, src=socket.gethostbyname(socket.gethostname()), dst='255.255.255.255')
 
-                    print(self.packet_type(msg))
+                    msg, client = server.recvfrom(1024)
                     parse_info = parse_dhcp(msg)
-                    id, chaddrss = parse_info['xid'], parse_info['chaddr']
-                    # yiaddr_bytes = msg[16:20]
-                    # yiaddr_original = ipaddress.IPv4Address(yiaddr_bytes)
-                    # print("client want {}".format(yiaddr_original))
+                    xid, chaddrss = parse_info['xid'], parse_info['chaddr']
 
                     pkt = self.buildPacket_Ack(offer_ip, xid, mac)
                     # start lease time timer
@@ -127,6 +127,7 @@ class Server:
 
 
         else:
+            print('mac in self.client_ips')
             prev_ip = self.client_ips[mac]
             prev_thread = self.leaseThreads[mac]
             print("You are in list yet with {} ,lease time renew".format(prev_ip))
@@ -151,29 +152,27 @@ class Server:
 
             # print('Received data from client {} {}'.format(client, msg))
             log_message(MessageType.DHCPDISCOVER, src=get_ip_from_bytes(parse_dhcp(msg)['yiaddr']), dst=client[0])
-            msg_type = self.packet_type(msg)
-            print(msg_type)
-            if "DHCPDISCOVER" in msg_type:
-                parse_info = parse_dhcp(msg)
-                client_xid, client_mac = parse_info['xid'], parse_info['mac']
-                print("Client xid {}".format(client_xid))
-                server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                server.bind(("127.0.0.1", 68))
+
+            parse_info = parse_dhcp(msg)
+            client_xid, client_mac = parse_info['xid'], parse_info['mac']
+            print("Client xid {}".format(client_xid))
+            server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            server.bind(("127.0.0.1", 68))
 
 
-                executor.submit(self.handle_client,client_xid, client_mac, client,server)
+            executor.submit(self.handle_client,client_xid, client_mac, client,server)
 
             # t = threading.Thread(target=self.handle_client, args=(client_xid, client_mac, client,))
             # # self.connected_clients_list[client_xid]=client_mac
             # t.start()
 
 
-    def packet_type(self, packet):
-        if packet[len(packet) - 1] == 1:
-            return "DHCPDISCOVER"
-        if packet[len(packet) - 1] == 3:
-            return "DHCPREQUEST"
+    # def packet_type(self, packet):
+    #     if packet[len(packet) - 1] == 1:
+    #         return "DHCPDISCOVER"
+    #     if packet[len(packet) - 1] == 3:
+    #         return "DHCPREQUEST"
 
 
     def ip2long(self, ip):
@@ -194,37 +193,46 @@ class Server:
 
 
     def buildPacket_offer(self, offer_ip, xid, mac):
-        ip_as_bytes = bytes(map(int, str(offer_ip).split('.')))
-        serverip = bytes(map(int, str("127.0.0.1").split('.')))
-
-        packet = b''
-        packet += b'\x02'  # opcode
-        packet += b'\x01'  # Hardware type: Ethernet
-        packet += b'\x06'  # Hardware address length: 6
-        packet += b'\x00'  # Hops: 0
-        # print("xidddd{}".format(xid))
-        xid_hex = hex(xid).split('x')[-1]
-        print(xid_hex)
-        packet += bytearray.fromhex(xid_hex)  # Transaction ID
-
-        packet += b'\x00\x00'  # Seconds elapsed: 0
-        packet += b'\x00\x00'  # Bootp flags
-        packet += b'\x00\x00\x00\x00'  # Client IP address: 0.0.0.0
-        packet += ip_as_bytes  # Your (client) IP address: 0.0.0.0
-        packet += serverip  # Next server IP address: 0.0.0.0
-        packet += b'\x00\x00\x00\x00'  # Relay agent IP address: 0.0.0.0
-        # packet += b'\x00\x26\x9e\x04\x1e\x9b'   #Client MAC address: 00:26:9e:04:1e:9b
-        # mac = self.connected_clients_list[xid]
-        mac = str(mac).replace(':', '')
-        packet += bytearray.fromhex(mac)
-        packet += b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-        packet += b'\x00' * 67  # Server host name
-        packet += b'\x00' * 125  # Boot file name
-        packet += b'\x63\x82\x53\x63'  # Magic cookie: DHCP
-        # DHCP IP Address
-        packet += b'\x35\x01\x02'
-
-        return packet
+        print('building offer packet...')
+        try:
+            ip_as_bytes = bytes(map(int, str(offer_ip).split('.')))
+            serverip = bytes(map(int, str("127.0.0.1").split('.')))
+            packet = b''
+            packet += b'\x02'  # op
+            packet += b'\x01'  # Hardware type: Ethernet
+            packet += b'\x06'  # Hardware address length: 6
+            packet += b'\x00'  # Hops: 0
+            # print("xidddd{}".format(xid))
+            # xid_hex = hex(xid).split('x')[-1]
+            # print(xid_hex)
+            # packet += bytearray.fromhex(xid_hex)  # Transaction ID
+            packet += xid
+            # TODO HANDLE ID FOR EACH CLIENT
+            packet += b'\x00\x00'  # Seconds elapsed: 0
+            packet += b'\x00\x00'  # Bootp flags: 0x8000 (Broadcast) + reserved flags
+            packet += b'\x00\x00\x00\x00'  # Client IP address: 0.0.0.0
+            packet += ip_as_bytes  # Your (client) IP address: 0.0.0.0
+            packet += serverip  # Next server IP address: 0.0.0.0
+            packet += b'\x00\x00\x00\x00'  # Relay agent IP address: 0.0.0.0
+            # packet += b'\x00\x26\x9e\x04\x1e\x9b'   #Client MAC address: 00:26:9e:04:1e:9b
+            # mac = self.connected_clients_list[xid]
+            # mac = str(mac).replace(':', '')
+            # packet += bytearray.fromhex(mac)
+            # print(mac)
+            packet += mac
+            packet += b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'  # Client hardware address padding: 00000000000000000000
+            packet += b'\x00' * 67  # Server host name not given
+            packet += b'\x00' * 125  # Boot file name not given
+            packet += b'\x63\x82\x53\x63'  # Magic cookie: DHCP
+            # DHCP IP Address
+            packet += b'\x35\x01\x02'  # Option: (t=53,l=1) DHCP Message Type = DHCP Discover
+            print('...done')
+            return packet
+        except Exception as e:
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
+            print(exc_type, fname, exc_tb.tb_lineno)
+            print(e)
 
 
     def buildPacket_Ack(self, offer_ip, xid, mac):
@@ -272,10 +280,7 @@ class Server:
 
     def block_or_not(self, mac):
         block = False
-        f = open("C:\\Users\\Asus\\PycharmProjects\\CN_P3\\configs.json")
-        data = json.load(f)
-        f.close()
-        if mac in data["black_list"]:
+        if mac in self.data["black_list"]:
             block = True
         return block
 
