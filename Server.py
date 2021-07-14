@@ -1,6 +1,8 @@
 import socket
 import sys
 import os
+import time
+
 from logging_functions import *
 MAX_BYTES = 1024
 
@@ -9,7 +11,6 @@ clientPort = 68
 
 
 class DHCP_server(object):
-
     def server(self):
         print("DHCP server is starting...\n")
 
@@ -48,6 +49,8 @@ class DHCP_server(object):
                         log_message(MessageType.DHCPREQUEST, src=get_ip_from_bytes(request_info['yiaddr']), dst=src[0])
 
                         # print("Send DHCP pack.\n")
+                        # time.sleep(5)
+
                         ack = self.pack_get(offer_ip, discover_info['xid'], discover_info['mac'])
                         s.sendto(ack, dest)
                         log_message(MessageType.DHCPACK, src=src[0], dst=offer_ip)
@@ -57,6 +60,7 @@ class DHCP_server(object):
                         fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
                         print(exc_type, fname, exc_tb.tb_lineno)
                         print(e)
+
             except Exception as e:
                 exc_type, exc_obj, exc_tb = sys.exc_info()
                 fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]
@@ -66,6 +70,7 @@ class DHCP_server(object):
     def offer_get(self, offer_ip, xid, mac):
         try:
             ip_as_bytes = bytes(map(int, str(offer_ip).split('.')))
+            print(ip_as_bytes)
             serverip = bytes(map(int, str("127.0.0.1").split('.')))
 
             packet = b''

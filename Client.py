@@ -1,6 +1,7 @@
 import socket
 import time
 import threading
+import multiprocessing
 import struct
 from logging_functions import *
 from random import randint
@@ -8,21 +9,11 @@ from uuid import getnode as get_mac
 import uuid
 
 
-MAX_BYTES = 1024
-SERVER_PORT = 67
-CLIENT_PORT = 68
-has_ip = False
-BACKOFF_CUTOFF = 120
-INITIAL_INTERVAL = 10
 
-def timer(t):
-    while t:
-        time.sleep(1)
-        t -= 1
+
+
 
 def parse_dhcp(p):
-    # print(p)
-    xid = p[4:8]  # bytes: 4, 5, 6, 7
     info = {
         'xid': p[4:8],
         'secs': p[8:10],
@@ -37,38 +28,107 @@ def parse_dhcp(p):
 
 class DHCP_client(object):
 
+    def __init__(self):
+        self.MAX_BYTES = 1024
+        self.SERVER_PORT = 67
+        self.CLIENT_PORT = 68
+        self.has_ip = False
+        self.BACKOFF_CUTOFF = 120
+        self.INITIAL_INTERVAL = 10
 
-    def client(self):
+        self.dhcp_thread = None
+        self.time_thread = None
+
+    # def timer(self, t):
+    #     while t:
+    #         if self.has_ip:
+    #             print('ip found. deactivation of timer')
+    #             break
+    #         time.sleep(1)
+    #         print(t)
+    #         t -= 1
+    #     print('time is up')
+    #     # self.dhcp_thread.s()
+
+    def dhcp_client_thread_function(self):
+        # self.time_thread = threading.Thread(target=self.timer, args=(3,))
+        # self.time_thread.start()
+        # self.time_thread.join(3)
         print("DHCP client is starting...\n")
-        dest = ('255.255.255.255', SERVER_PORT)
+        dest = ('255.255.255.255', self.SERVER_PORT)
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        src = ('0.0.0.0', CLIENT_PORT)
+        src = ('0.0.0.0', self.CLIENT_PORT)
         s.bind(src)
+        ack = None
 
-        mac = ':'.join(['{:02x}'.format((uuid.getnode() >> ele) & 0xff) for ele in range(0,8*6,8)][::-1])
+        mac = ':'.join(['{:02x}'.format((uuid.getnode() >> ele) & 0xff) for ele in range(0, 8 * 6, 8)][::-1])
         print(mac)
 
         discover = self.discover_get(mac)
         s.sendto(discover, dest)
-
-        # parse_dhcp(discover)
-
         log_message(MessageType.DHCPDISCOVER, src=get_ip_from_bytes(parse_dhcp(discover)['yiaddr']), dst=dest[0])
 
-        offer, address = s.recvfrom(MAX_BYTES)
-
+        offer, address = s.recvfrom(self.MAX_BYTES)
         offer_info = parse_dhcp(offer)
-        # print(data)
         log_message(MessageType.DHCPOFFER, src=get_ip_from_bytes(offer_info['siaddr']), dst=src[0])
-        print('OFFERED IP FROM {}: {}'.format(get_ip_from_bytes(offer_info['siaddr']), get_ip_from_bytes(offer_info['yiaddr'])))
+        print('OFFERED IP FROM {}: {}'.format(get_ip_from_bytes(offer_info['siaddr']),
+                                              get_ip_from_bytes(offer_info['yiaddr'])))
 
         request = self.request_get(address[1], offer_info['yiaddr'])
         s.sendto(request, dest)
         log_message(MessageType.DHCPREQUEST, src=src[0], dst=dest[0])
 
-        ack, address = s.recvfrom(MAX_BYTES)
-        log_message(MessageType.DHCPACK, src=get_ip_from_bytes(offer_info['siaddr']), dst=get_ip_from_bytes(offer_info['yiaddr']))
+        ack, address = s.recvfrom(self.MAX_BYTES)
+        log_message(MessageType.DHCPACK, src=get_ip_from_bytes(offer_info['siaddr']),
+                    dst=get_ip_from_bytes(offer_info['yiaddr']))
+        print(ack)
+        if ack:
+            self.has_ip = True
+
+    def client(self):
+
+        print("DHCP client is starting...\n")
+        dest = ('255.255.255.255', self.SERVER_PORT)
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        src = ('0.0.0.0', self.CLIENT_PORT)
+        s.bind(src)
+        ack = None
+
+        mac = ':'.join(['{:02x}'.format((uuid.getnode() >> ele) & 0xff) for ele in range(0,8*6,8)][::-1])
+        print(mac)
+
+        while True:
+            # t = threading.Thread(target=self.timer, args=(2,))
+            # t.start()
+
+            discover = self.discover_get(mac)
+            s.sendto(discover, dest)
+            log_message(MessageType.DHCPDISCOVER, src=get_ip_from_bytes(parse_dhcp(discover)['yiaddr']), dst=dest[0])
+
+            offer, address = s.recvfrom(MAX_BYTES)
+            offer_info = parse_dhcp(offer)
+            log_message(MessageType.DHCPOFFER, src=get_ip_from_bytes(offer_info['siaddr']), dst=src[0])
+            print('OFFERED IP FROM {}: {}'.format(get_ip_from_bytes(offer_info['siaddr']), get_ip_from_bytes(offer_info['yiaddr'])))
+
+            request = self.request_get(address[1], offer_info['yiaddr'])
+            s.sendto(request, dest)
+            log_message(MessageType.DHCPREQUEST, src=src[0], dst=dest[0])
+
+            ack, address = s.recvfrom(MAX_BYTES)
+
+            log_message(MessageType.DHCPACK, src=get_ip_from_bytes(offer_info['siaddr']), dst=get_ip_from_bytes(offer_info['yiaddr']))
+            if ack:
+                has_ip = True
+                break
+
+            t.join()
+            if ack:
+                print('DONE')
+                break
+            else:
+                print('NO IP FOUND... TRYING AGAIN')
 
     def discover_get(self, mac):
         mac = str(mac).replace(":", "")
@@ -138,7 +198,17 @@ class DHCP_client(object):
 
         return packet
 
+    def main(self):
+        while not self.has_ip:
+            self.dhcp_thread = threading.Thread(target=self.dhcp_client_thread_function)
+            self.dhcp_thread.start()
+            # self.dhcp_thread.join(30)
+            # self.time_thread.join()
+
+
+
+
 
 if __name__ == '__main__':
     dhcp_client = DHCP_client()
-    dhcp_client.client()
+    dhcp_client.main()
