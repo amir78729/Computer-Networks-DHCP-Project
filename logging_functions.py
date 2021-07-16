@@ -52,4 +52,4 @@ def get_mac_from_bytes(mac_byte):
         t = mac_byte[m]
         t = str(hex(t // 16)).replace('0x', '') + str(hex(t % 16)).replace('0x', '')
         mac.append(t)
-    return '{}:{}:{}:{}:{}:{}'.format(mac[0], mac[1], mac[2], mac[3], mac[4], mac[5])
+    return '{}:{}:{}:{}:{}:{}'.format(mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]).upper()

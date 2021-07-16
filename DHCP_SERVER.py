@@ -16,11 +16,14 @@ from concurrent.futures import ThreadPoolExecutor  # Python 3.2
 class Server:
 
     def __init__(self):
-        print('Initializing DHCP Server')
+        self.serverIP = socket.gethostbyname(socket.gethostname())
+        # self.serverIP = '127.0.0.1'
+
+        print('Initializing DHCP Server. ({})'.format(self.serverIP))
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        self.sock.bind((socket.gethostbyname(socket.gethostname()), 68))
+        self.sock.bind((self.serverIP, 68))
         self.connected_clients_list = dict()
         # self.clients = []
         self.OccupyIP = []
@@ -32,7 +35,7 @@ class Server:
 
         self.startInterval = 0
         self.stopInterval = 0
-        self.serverIP = socket.gethostbyname(socket.gethostname())
+
         f = open("configs.json")
         self.data = json.load(f)
         f.close()
@@ -53,127 +56,237 @@ class Server:
                 self.reserved[key] = self.data["reservation_list"][key]
                 self.OccupyIP.append(self.data["reservation_list"][key])
 
+    def start(self):
+        pass
+
     def handle_client(self, xid, mac, addrss,server):
-        # print('handle client')
-        if mac not in self.client_ips:
-            # print('mac not in self.client_ips')
-            macUpper = str(mac).upper()
-            block = self.block_or_not(macUpper)
-            reserve = self.reserved_or_not(macUpper)
-
-            # print(reserve)
-            if block:
-                print("This client is blocked")
-                string = "You are blocked "
-                self.sock.sendto(string.encode(), ('255.255.255.255', 67))
-            if reserve:
-                reserved_ip = self.reserved[macUpper]
-                print("This client is reserved with ip {}".format(reserved_ip))
-                string = "You are reserved with ip {}".format(reserved_ip)
-                self.sock.sendto(string.encode(), ('255.255.255.255', 67))
-                PCName = OuiLookup().query(mac)
-                client_info = [PCName, mac, reserved_ip, "infinity"]
-                self.Serviced_ClientsInfo_print.append(client_info)
-
-            if not block and not reserve:
-                if mac not in self.connected_clients_list:
-                    self.connected_clients_list[mac] = xid
-                # print(self.connected_clients_list)
-                occupy_ip_len = len(self.OccupyIP)
-                all_ip_number = self.stopInterval - self.startInterval + 1
-                if occupy_ip_len == all_ip_number:
-                    string = "sorry all ips are occupied"
-                    self.sock.sendto(string.encode(), ('255.255.255.255', 67))
-                else:
-                    flag = True
-                    offer = 0
-                    offer_ip = ""
-                    while flag:
-
-                        offer = random.randint(self.startInterval, self.stopInterval)
-                        offer_ip = self.long2ip(offer)
-
-                        if offer_ip in self.OccupyIP and offer_ip in self.waitIP:
-                            continue
-                        else:
-                            print("CANDIDATE IP: {}".format(offer_ip))
-                            self.waitIP.append(offer_ip)
-                            flag = False
-
-                    # print("lets offer to {}".format(get_mac_from_bytes(mac)))
-                    pkt = self.buildPacket_offer(offer_ip, xid, mac)
-                    self.sock.sendto(pkt, ('255.255.255.255', 67))
-                    log_message(MessageType.DHCPOFFER, src=socket.gethostbyname(socket.gethostname()), dst='255.255.255.255')
-
-                    msg, client = server.recvfrom(1024)
-                    request_info = parse_dhcp(msg)
-                    xid, chaddrss = request_info['xid'], request_info['chaddr']
-                    log_message(MessageType.DHCPREQUEST, src=get_ip_from_bytes(request_info['yiaddr']), dst='255.255.255.255')
-
-                    pkt = self.buildPacket_Ack(offer_ip, xid, mac)
-                    # start lease time timer
-                    time.sleep(5)
-                    self.sock.sendto(pkt, ('255.255.255.255', 67))
-                    lease_time = self.lease_time
-                    PCName = OuiLookup().query(mac)
-                    client_info = [PCName, mac, offer_ip, lease_time]
-                    self.Serviced_ClientsInfo_print.append(client_info)
-                    index = self.Serviced_ClientsInfo_print.index(client_info)
-                    self.OccupyIP.append(offer_ip)
-                    self.client_ips[mac] = offer_ip
-                    lease_thread = threading.Thread(target=self.lease, args=(mac, offer_ip, xid, index))
-                    self.leaseThreads[mac] = lease_thread
-                    lease_thread.start()
-
-
-
-        else:
-            print('mac in self.client_ips')
-            prev_ip = self.client_ips[mac]
-            prev_thread = self.leaseThreads[mac]
-            print("You are in list yet with {} ,lease time renew".format(prev_ip))
-            string = "You are in list yet with {} ,lease time renew".format(prev_ip)
-            self.sock.sendto(string.encode(), ('255.255.255.255', 67))
-            index = -1
-            prev_thread.join()
-            self.leaseThreads.pop(mac)
-            lease_thread = threading.Thread(target=self.lease, args=(mac, prev_ip, xid, index))
-            self.leaseThreads[mac] = lease_thread
-            lease_thread.start()
+        pass
+        # print('MAC: ' + mac)
+        # # print('handle client')
+        # if mac not in self.client_ips:
+        #     # print('mac not in self.client_ips')
+        #     macUpper = str(mac).upper()
+        #     block = self.block_or_not(macUpper)
+        #     reserve = self.reserved_or_not(macUpper)
+        #
+        #     # print(reserve)
+        #     if block:
+        #         print("This client is blocked")
+        #         string = "You are blocked "
+        #         self.sock.sendto(string.encode(), ('255.255.255.255', 67))
+        #     if reserve:
+        #         reserved_ip = self.reserved[macUpper]
+        #         print("This client is reserved with ip {}".format(reserved_ip))
+        #         string = "You are reserved with ip {}".format(reserved_ip)
+        #         self.sock.sendto(string.encode(), ('255.255.255.255', 67))
+        #         PCName = OuiLookup().query(mac)
+        #         client_info = [PCName, mac, reserved_ip, "infinity"]
+        #         self.Serviced_ClientsInfo_print.append(client_info)
+        #
+        #     if not block and not reserve:
+        #         if mac not in self.connected_clients_list:
+        #             self.connected_clients_list[mac] = xid
+        #         # print(self.connected_clients_list)
+        #         occupy_ip_len = len(self.OccupyIP)
+        #         all_ip_number = self.stopInterval - self.startInterval + 1
+        #         if occupy_ip_len == all_ip_number:
+        #             string = "sorry all ips are occupied"
+        #             self.sock.sendto(string.encode(), ('255.255.255.255', 67))
+        #         else:
+        #             flag = True
+        #             offer = 0
+        #             offer_ip = ""
+        #             while flag:
+        #
+        #                 offer = random.randint(self.startInterval, self.stopInterval)
+        #                 offer_ip = self.long2ip(offer)
+        #
+        #                 if offer_ip in self.OccupyIP and offer_ip in self.waitIP:
+        #                     continue
+        #                 else:
+        #                     print("CANDIDATE IP: {}".format(offer_ip))
+        #                     self.waitIP.append(offer_ip)
+        #                     flag = False
+        #
+        #             # print("lets offer to {}".format(get_mac_from_bytes(mac)))
+        #             pkt = self.buildPacket_offer(offer_ip, xid, mac)
+        #             self.sock.sendto(pkt, ('255.255.255.255', 67))
+        #             log_message(MessageType.DHCPOFFER, src=socket.gethostbyname(socket.gethostname()), dst='255.255.255.255')
+        #
+        #             msg, client = server.recvfrom(4096)
+        #             request_info = parse_dhcp(msg)
+        #             xid, chaddrss = request_info['xid'], request_info['chaddr']
+        #             log_message(MessageType.DHCPREQUEST, src=get_ip_from_bytes(request_info['yiaddr']), dst='255.255.255.255')
+        #
+        #             pkt = self.buildPacket_Ack(offer_ip, xid, mac)
+        #             # start lease time timer
+        #             time.sleep(5)
+        #             self.sock.sendto(pkt, ('255.255.255.255', 67))
+        #             log_message(MessageType.DHCPACK, src=socket.gethostbyname(socket.gethostname()), dst=offer_ip)
+        #
+        #             lease_time = self.lease_time
+        #             PCName = OuiLookup().query(mac)
+        #             client_info = [PCName, mac, offer_ip, lease_time]
+        #             self.Serviced_ClientsInfo_print.append(client_info)
+        #             index = self.Serviced_ClientsInfo_print.index(client_info)
+        #             self.OccupyIP.append(offer_ip)
+        #             self.client_ips[mac] = offer_ip
+        #             lease_thread = threading.Thread(target=self.lease, args=(mac, offer_ip, xid, index))
+        #             self.leaseThreads[mac] = lease_thread
+        #             lease_thread.start()
+        #
+        #
+        #
+        # else:
+        #     print('mac in self.client_ips')
+        #     prev_ip = self.client_ips[mac]
+        #     prev_thread = self.leaseThreads[mac]
+        #     print("You are in list yet with {} ,lease time renew".format(prev_ip))
+        #     string = "You are in list yet with {} ,lease time renew".format(prev_ip)
+        #     self.sock.sendto(string.encode(), ('255.255.255.255', 67))
+        #     index = -1
+        #     prev_thread.join()
+        #     self.leaseThreads.pop(mac)
+        #     lease_thread = threading.Thread(target=self.lease, args=(mac, prev_ip, xid, index))
+        #     self.leaseThreads[mac] = lease_thread
+        #     lease_thread.start()
 
     def get_discovery(self):
         workers = 5
         items = 15
         executor = ThreadPoolExecutor(max_workers=workers)
-        executor.submit(self.show_clients())
+        # executor.submit(self.show_clients())
         # show_client_thread = threading.Thread(target=self.show_clients())
         # show_client_thread.start()
         while True:
-            msg, client = self.sock.recvfrom(1024)
+            try:
+                print('waiting for a client...'.upper())
+                msg, client = self.sock.recvfrom(4096)
+                msg_type = self.packet_type(msg)
+                # print(msg_type)
+                if "DHCPDISCOVER" in msg_type:
+                    # print('Received data from client {} {}'.format(client, msg))
+                    log_message(MessageType.DHCPDISCOVER, src='0.0.0.0', dst='255.255.255.255')
 
-            # print('Received data from client {} {}'.format(client, msg))
-            log_message(MessageType.DHCPDISCOVER, src=get_ip_from_bytes(parse_dhcp(msg)['yiaddr']), dst=client[0])
+                    parse_info = parse_dhcp(msg)
+                    xid, mac = parse_info['xid'], parse_info['mac']
+                    # print("Client xid {}".format(client_xid))
+                    # server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    # server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    # server.bind(("127.0.0.1", 68))
 
-            parse_info = parse_dhcp(msg)
-            client_xid, client_mac = parse_info['xid'], parse_info['mac']
-            # print("Client xid {}".format(client_xid))
-            server = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            server.bind(("127.0.0.1", 68))
+                    # print('xxxxxxxx')
+                    # executor.submit(self.handle_client,client_xid, client_mac, client,server)
+                    mac_string = get_mac_from_bytes(mac)
+                    print('CLIENT MAC ADDRESS: ' + mac_string)
+                    # print('handle client')
+                    if mac not in self.client_ips:
+                        # print('mac not in self.client_ips')
+                        macUpper = str(mac_string).upper()
+                        block = self.block_or_not(macUpper)
+                        reserve = self.reserved_or_not(macUpper)
+                        if block:
+                            print("This client is blocked".upper())
+                            string = "You are blocked! "
+                            self.sock.sendto(string.encode(), ('255.255.255.255', 67))
+
+                        elif reserve:
+                            reserved_ip = self.reserved[macUpper]
+                            print("This client is reserved with ip {}".format(reserved_ip).upper())
+                            string = "You are reserved with ip {}!".format(reserved_ip)
+                            self.sock.sendto(string.encode(), ('255.255.255.255', 67))
+                            # PCName = OuiLookup().query(mac)
+                            # client_info = [PCName, mac, reserved_ip, "infinity"]
+                            # self.Serviced_ClientsInfo_print.append(client_info)
+
+                        else:
+                            if mac not in self.connected_clients_list:
+                                self.connected_clients_list[mac] = xid
+                            # print(self.connected_clients_list)
+                            occupy_ip_len = len(self.OccupyIP)
+                            all_ip_number = self.stopInterval - self.startInterval + 1
+                            if occupy_ip_len == all_ip_number:
+                                string = "sorry all ips are occupied"
+                                self.sock.sendto(string.encode(), ('255.255.255.255', 67))
+                            else:
+                                flag = True
+                                offer = 0
+                                offer_ip = ""
+                                while flag:
+
+                                    offer = random.randint(self.startInterval, self.stopInterval)
+                                    offer_ip = self.long2ip(offer)
+
+                                    if offer_ip in self.OccupyIP and offer_ip in self.waitIP:
+                                        continue
+                                    else:
+                                        print("CANDIDATE IP: {}".format(offer_ip))
+                                        self.waitIP.append(offer_ip)
+                                        flag = False
+
+                                # print("lets offer to {}".format(get_mac_from_bytes(mac)))
+                                pkt = self.buildPacket_offer(offer_ip, xid, mac)
+                                self.sock.sendto(pkt, ('255.255.255.255', 67))
+                                log_message(MessageType.DHCPOFFER, src='127.0.0.1',
+                                            dst='255.255.255.255')
+                                print('wazaaaaaa')
+                                msg, client_address = self.sock.recvfrom(4096)
+                                print(client_address)
+                                # msg, client = server.recvfrom(4096)
+                                print('wazaaaaaa')
+                                request_info = parse_dhcp(msg)
+                                xid, chaddrss = request_info['xid'], request_info['chaddr']
+                                log_message(MessageType.DHCPREQUEST, src=get_ip_from_bytes(request_info['yiaddr']),
+                                            dst='255.255.255.255')
+
+                                pkt = self.buildPacket_Ack(offer_ip, xid, mac)
+                                # start lease time timer
+                                time.sleep(5)
+                                self.sock.sendto(pkt, client_address)
+                                # self.sock.sendto(pkt, ('255.255.255.255', 68))
+                                log_message(MessageType.DHCPACK, src=self.serverIP,
+                                            dst=offer_ip)
+
+                                lease_time = self.lease_time
+                                print(mac)
+                                # PCName = OuiLookup().query(mac)
+                                # client_info = [PCName, mac, offer_ip, lease_time]
+                                # self.Serviced_ClientsInfo_print.append(client_info)
+                                # index = self.Serviced_ClientsInfo_print.index(client_info)
+                                # self.OccupyIP.append(offer_ip)
+                                # self.client_ips[mac] = offer_ip
+                                # lease_thread = threading.Thread(target=self.lease, args=(mac, offer_ip, xid, index))
+                                # self.leaseThreads[mac] = lease_thread
+                                # lease_thread.start()
 
 
-            executor.submit(self.handle_client,client_xid, client_mac, client,server)
 
+                else:
+                    print('mac in self.client_ips')
+                    prev_ip = self.client_ips[mac]
+                    prev_thread = self.leaseThreads[mac]
+                    print("You are in list yet with {} ,lease time renew".format(prev_ip))
+                    string = "You are in list yet with {} ,lease time renew".format(prev_ip)
+                    self.sock.sendto(string.encode(), ('255.255.255.255', 67))
+                    index = -1
+                    prev_thread.join()
+                    self.leaseThreads.pop(mac)
+                    lease_thread = threading.Thread(target=self.lease, args=(mac, prev_ip, xid, index))
+                    self.leaseThreads[mac] = lease_thread
+                    lease_thread.start()
+
+            except Exception as e:
+                print(e)
             # t = threading.Thread(target=self.handle_client, args=(client_xid, client_mac, client,))
             # # self.connected_clients_list[client_xid]=client_mac
             # t.start()
 
 
-    # def packet_type(self, packet):
-    #     if packet[len(packet) - 1] == 1:
-    #         return "DHCPDISCOVER"
-    #     if packet[len(packet) - 1] == 3:
-    #         return "DHCPREQUEST"
+    def packet_type(self, packet):
+        if packet[len(packet) - 1] == 1:
+            return "DHCPDISCOVER"
+        if packet[len(packet) - 1] == 3:
+            return "DHCPREQUEST"
 
 
     def ip2long(self, ip):
@@ -247,9 +360,11 @@ class Server:
         packet += b'\x06'  # Hardware address length: 6
         packet += b'\x00'  # Hops: 0
 
-        xid_hex = hex(xid).split('x')[-1]
-        # print(xid_hex)
-        packet += bytes.fromhex(xid_hex)  # Transaction ID
+        # xid_hex = hex(xid).split('x')[-1]
+        # # print(xid_hex)
+        # packet += bytes.fromhex(xid_hex)  # Transaction ID
+
+        packet += xid
 
         packet += b'\x00\x00'  # Seconds elapsed: 0
         packet += b'\x00\x00'  # Bootp flags
@@ -259,8 +374,9 @@ class Server:
         packet += b'\x00\x00\x00\x00'  # Relay agent IP address: 0.0.0.0
         # packet += b'\x00\x26\x9e\x04\x1e\x9b'   #Client MAC address: 00:26:9e:04:1e:9b
         # mac = self.connected_clients_list[xid]
-        mac = str(mac).replace(':', '')
-        packet += bytes.fromhex(mac)
+        # mac = str(mac).replace(':', '')
+        # packet += bytes.fromhex(mac)
+        packet += mac
         packet += b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
         packet += b'\x00' * 67  # Server host name
         packet += b'\x00' * 125  # Boot file name
@@ -282,17 +398,34 @@ class Server:
 
     def block_or_not(self, mac):
         block = False
-        if mac in self.data["black_list"]:
-            block = True
+        print('BLACK LIST:')
+        for i in self.data["black_list"]:
+            if i == mac:
+                print(' └─ {} (SHOULD BE BLOCKED!)'.format(i))
+                block = True
+            else:
+                print(' └─ {}'.format(i))
+        # print(self.data["black_list"])
+        # print(mac)
+        # block = False
+        # if mac in self.data["black_list"]:
+        #     block = True
         return block
 
 
     def reserved_or_not(self, mac):
+        print('RESERVED IP ADDRESSES:')
         reserved = False
+        for i in self.reserved.keys():
+            if i == mac:
+                print(' └─ {} HAS IP {}. (RESERVED!)'.format(i, self.reserved[i]))
+                reserved = True
+            else:
+                print(' └─ {} HAS IP {}.'.format(i, self.reserved[i]))
         # print(self.reserved)
         # print(mac)
-        if str(mac) in self.reserved:
-            reserved = True
+        # if str(mac) in self.reserved:
+        #     reserved = True
         return reserved
 
 
@@ -304,49 +437,38 @@ class Server:
         #             print(self.Serviced_ClientsInfo_print)
 
 
-    def lease(self, mac, ip, xid, index):
-        timeOut = self.lease_time
-        print("lease start for {}".format(mac))
+    # def lease(self, mac, ip, xid, index):
+    #     timeOut = self.lease_time
+    #     print("lease start for {}".format(mac))
+    #
+    #     while timeOut:
+    #         if mac not in self.client_ips:
+    #             self.client_ips[mac] = ip
+    #             self.OccupyIP.append(ip)
+    #             self.connected_clients_list[mac] = xid
+    #         mins, secs = divmod(timeOut, 60)
+    #         timer = '{:02d}:{:02d}'.format(mins, secs)
+    #
+    #         time.sleep(1)
+    #         timeOut -= 1
+    #         self.Serviced_ClientsInfo_print[index][3] = timeOut
+    #         # print(self.Serviced_ClientsInfo_print)
+    #     print("lease expire for {}".format(mac))
+    #     self.OccupyIP.remove(ip)
+    #     self.waitIP.remove(ip)
+    #     self.connected_clients_list.pop(str(mac))
+    #     self.client_ips.pop(str(mac))
 
-        while timeOut:
-            if mac not in self.client_ips:
-                self.client_ips[mac] = ip
-                self.OccupyIP.append(ip)
-                self.connected_clients_list[mac] = xid
-            mins, secs = divmod(timeOut, 60)
-            timer = '{:02d}:{:02d}'.format(mins, secs)
 
-            time.sleep(1)
-            timeOut -= 1
-            self.Serviced_ClientsInfo_print[index][3] = timeOut
-            # print(self.Serviced_ClientsInfo_print)
-        print("lease expire for {}".format(mac))
-        self.OccupyIP.remove(ip)
-        self.waitIP.remove(ip)
-        self.connected_clients_list.pop(str(mac))
-        self.client_ips.pop(str(mac))
-
-
-def show(server):
-    print("hii")
-    while True:
-
-        show=input()
-        if show=="show_clients":
-            print(Server(server).Serviced_ClientsInfo_print)
+# def show(server):
+#     print("hii")
+#     while True:
+#
+#         show=input()
+#         if show=="show_clients":
+#             print(Server(server).Serviced_ClientsInfo_print)
 
 
 if __name__ == '__main__':
-    # Make sure all log messages show up
-
     b = Server()
-
-
-    # t = threading.Thread(target=b.get_discovery())
-    #
-    # t.start()
     b.get_discovery()
-
-    # t2 = threading.Thread(target=show(b))
-    #
-    # t2.start()
