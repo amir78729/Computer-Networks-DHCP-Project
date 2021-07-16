@@ -243,7 +243,9 @@ class Server:
                                 pkt = self.buildPacket_Ack(offer_ip, xid, mac)
                                 # start lease time timer
                                 # time.sleep(5)
+
                                 self.sock.sendto(pkt, ('255.255.255.255', 67))
+
                                 # self.sock.sendto(pkt, ('255.255.255.255', 68))
                                 log_message(MessageType.DHCPACK, src=self.serverIP,
                                             dst=offer_ip)

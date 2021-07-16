@@ -20,8 +20,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/logging_functions.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="291">
-              <caret line="42" selection-start-line="42" selection-end-line="42" />
+            <state relative-caret-position="425">
+              <caret line="25" column="16" lean-forward="true" selection-start-line="25" selection-start-column="16" selection-end-line="25" selection-end-column="16" />
               <folding>
                 <element signature="e#0#15#0" expanded="true" />
               </folding>
@@ -32,8 +32,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/DHCP_SERVER.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="808">
-              <caret line="228" column="79" selection-start-line="228" selection-start-column="73" selection-end-line="228" selection-end-column="79" />
+            <state relative-caret-position="71">
+              <caret line="247" lean-forward="true" selection-start-line="247" selection-end-line="247" />
               <folding>
                 <element signature="e#0#16#0" expanded="true" />
               </folding>
@@ -44,8 +44,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/DHCP_CLIENT.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="194">
-              <caret line="116" column="24" selection-start-line="116" selection-start-column="23" selection-end-line="116" selection-end-column="24" />
+            <state relative-caret-position="150">
+              <caret line="302" column="36" selection-start-line="302" selection-start-column="36" selection-end-line="302" selection-end-column="36" />
               <folding>
                 <element signature="e#0#16#0" expanded="true" />
               </folding>
@@ -56,7 +56,7 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/configs.json">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="188">
+            <state relative-caret-position="272">
               <caret line="16" column="26" lean-forward="true" selection-start-line="16" selection-start-column="9" selection-end-line="16" selection-end-column="26" />
             </state>
           </provider>
@@ -73,10 +73,6 @@
   </component>
   <component name="FindInProjectRecents">
     <findStrings>
-      <find>DHCPOFF</find>
-      <find>log</find>
-      <find>buildPacket_offer</find>
-      <find>لثف</find>
       <find>dis_time -=</find>
       <find>:)</find>
       <find>DHCPACK</find>
@@ -93,7 +89,6 @@
       <find>dhcpof</find>
       <find>get</find>
       <find>dhcpack</find>
-      <find>expire</find>
       <find>ack</find>
       <find>server</find>
       <find>ACK</find>
@@ -103,6 +98,11 @@
       <find>67</find>
       <find>[server</find>
       <find>68</find>
+      <find>'-'</find>
+      <find>socket.timeout</find>
+      <find>self.sock.sendto(pkt, client_address)</find>
+      <find>expire</find>
+      <find>Next discovery time</find>
     </findStrings>
     <replaceStrings>
       <replace>op</replace>
@@ -114,6 +114,7 @@
       <replace>print</replace>
       <replace>get_ip_from_bytes</replace>
       <replace>recvfrom(4096)</replace>
+      <replace>new discovery timer value</replace>
     </replaceStrings>
   </component>
   <component name="Git.Settings">
@@ -295,7 +296,7 @@
       <workItem from="1626097897413" duration="17334000" />
       <workItem from="1626288632798" duration="2443000" />
       <workItem from="1626301081090" duration="3238000" />
-      <workItem from="1626383647270" duration="19195000" />
+      <workItem from="1626383647270" duration="27907000" />
     </task>
     <task id="LOCAL-00001" summary="base client and server created">
       <created>1623569430425</created>
@@ -353,11 +354,25 @@
       <option name="project" value="LOCAL" />
       <updated>1626433569419</updated>
     </task>
-    <option name="localTasksCounter" value="9" />
+    <task id="LOCAL-00009" summary="offer client ok">
+      <created>1626435508743</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1626435508743</updated>
+    </task>
+    <task id="LOCAL-00010" summary="done. except those stupid timers">
+      <created>1626440592042</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1626440592042</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="85550000" />
+    <option name="totallyTimeSpent" value="94262000" />
   </component>
   <component name="TodoView" selected-index="2">
     <todo-panel id="selected-file">
@@ -372,12 +387,12 @@
     <frame x="-7" y="-7" width="1295" height="695" extended-state="6" />
     <editor active="true" />
     <layout>
-      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.8080569" visible="true" weight="0.16248989" />
-      <window_info id="Structure" order="1" sideWeight="0.19194312" side_tool="true" visible="true" weight="0.16248989" />
+      <window_info content_ui="combo" id="Project" order="0" sideWeight="0.7879656" visible="true" weight="0.16248989" />
+      <window_info id="Structure" order="1" sideWeight="0.21203439" side_tool="true" visible="true" weight="0.16248989" />
       <window_info id="Favorites" order="2" sideWeight="0.5035461" side_tool="true" weight="0.130962" />
       <window_info anchor="bottom" id="Message" order="0" />
       <window_info anchor="bottom" id="Find" order="1" />
-      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.25177306" />
+      <window_info active="true" anchor="bottom" id="Run" order="2" visible="true" weight="0.38120568" />
       <window_info anchor="bottom" id="Debug" order="3" weight="0.6205674" />
       <window_info anchor="bottom" id="Cvs" order="4" weight="0.25" />
       <window_info anchor="bottom" id="Inspection" order="5" weight="0.4" />
@@ -409,12 +424,14 @@
     <MESSAGE value="offer" />
     <MESSAGE value="offer2" />
     <MESSAGE value="ack ok" />
-    <option name="LAST_COMMIT_MESSAGE" value="ack ok" />
+    <MESSAGE value="offer client ok" />
+    <MESSAGE value="done. except those stupid timers" />
+    <option name="LAST_COMMIT_MESSAGE" value="done. except those stupid timers" />
   </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/Computer_Networks_DHCP_Project$DHCP_CLIENT.coverage" NAME="DHCP_CLIENT Coverage Results" MODIFIED="1626435449392" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/Computer_Networks_DHCP_Project$DHCP_CLIENT.coverage" NAME="DHCP_CLIENT Coverage Results" MODIFIED="1626447760809" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/Computer_Networks_DHCP_Project$Server.coverage" NAME="Server Coverage Results" MODIFIED="1626248701399" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/Computer_Networks_DHCP_Project$DHCP_SERVER.coverage" NAME="DHCP_SERVER Coverage Results" MODIFIED="1626435118027" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/Computer_Networks_DHCP_Project$DHCP_SERVER.coverage" NAME="DHCP_SERVER Coverage Results" MODIFIED="1626445961911" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/Computer_Networks_DHCP_Project$Client.coverage" NAME="Client Coverage Results" MODIFIED="1626248931562" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
   </component>
   <component name="editorHistoryManager">
@@ -435,13 +452,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/configs.json">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="188">
-          <caret line="16" column="26" lean-forward="true" selection-start-line="16" selection-start-column="9" selection-end-line="16" selection-end-column="26" />
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$USER_HOME$/AppData/Local/Programs/Python/Python37/Lib/codecs.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="97">
@@ -453,16 +463,6 @@
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="93">
           <caret line="561" column="8" selection-start-line="561" selection-start-column="8" selection-end-line="561" selection-end-column="8" />
-        </state>
-      </provider>
-    </entry>
-    <entry file="file://$PROJECT_DIR$/logging_functions.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="291">
-          <caret line="42" selection-start-line="42" selection-end-line="42" />
-          <folding>
-            <element signature="e#0#15#0" expanded="true" />
-          </folding>
         </state>
       </provider>
     </entry>
@@ -483,10 +483,27 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/configs.json">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="272">
+          <caret line="16" column="26" lean-forward="true" selection-start-line="16" selection-start-column="9" selection-end-line="16" selection-end-column="26" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/logging_functions.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="425">
+          <caret line="25" column="16" lean-forward="true" selection-start-line="25" selection-start-column="16" selection-end-line="25" selection-end-column="16" />
+          <folding>
+            <element signature="e#0#15#0" expanded="true" />
+          </folding>
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/DHCP_SERVER.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="808">
-          <caret line="228" column="79" selection-start-line="228" selection-start-column="73" selection-end-line="228" selection-end-column="79" />
+        <state relative-caret-position="71">
+          <caret line="247" lean-forward="true" selection-start-line="247" selection-end-line="247" />
           <folding>
             <element signature="e#0#16#0" expanded="true" />
           </folding>
@@ -495,8 +512,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/DHCP_CLIENT.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="194">
-          <caret line="116" column="24" selection-start-line="116" selection-start-column="23" selection-end-line="116" selection-end-column="24" />
+        <state relative-caret-position="150">
+          <caret line="302" column="36" selection-start-line="302" selection-start-column="36" selection-end-line="302" selection-end-column="36" />
           <folding>
             <element signature="e#0#16#0" expanded="true" />
           </folding>

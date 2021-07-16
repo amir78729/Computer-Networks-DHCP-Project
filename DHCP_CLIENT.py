@@ -34,9 +34,13 @@ clientPort = 68
 
 def buildPacket_discovery(mac):
     print('BUILDING DISCOVER PACKET...', end='')
-    mac = str(mac).replace(":", "")
-    mac = bytes.fromhex(mac)
+    try:
+        mac = str(mac).replace(":", "")
+        mac = bytes.fromhex(mac)
+    except ValueError:
+        print(mac)
     global Mac, XID
+    # print(mac)
     # macb = getMacInBytes()
     Mac = mac
     # print(Mac)
@@ -122,77 +126,86 @@ def parse_packet_client(pkt):
 
 def start_process(mac):
     global dis_time
-    sock.settimeout(2)
-    discover = buildPacket_discovery(mac)
-    sock.sendto(discover, ('<broadcast>', 68))
-    log_message(MessageType.DHCPDISCOVER, src=get_ip_from_bytes(parse_dhcp(discover)['yiaddr']), dst='255.255.255.255')
-    print('WAITING FOR THE DHCP SERVER...')
-    get_ip = False
-    getAck = False
-    finish = False
-    # timer_thread=threading.Thread(target=discovery_timer,args=(ds_time,))
-    # timer_thread.start()
-    # while dis_time>0:
-
-    # offer
-
-    msg, server_address = sock.recvfrom(4096)
-    offer_info = parse_dhcp(msg)
-    # print((offer_info['siaddr']))
-    # print(server_address)
-    log_message(MessageType.DHCPOFFER, src=server_address[0], dst='255.255.255.255')
-    try:
-        data = msg.decode('utf-8')
-        print('[SERVER] ' + data.upper())
-        if "renew" in data:
-            getAck = True
-            get_ip = True
-        if "blocked" or "reserved" in data:
-            print('-'*70)
-            finish = True
-            quit()
-        # print(data)
-    except (UnicodeDecodeError, AttributeError):
-        # print('NOT DECODED')
-        # print(e)
-        # print(pkt_type(msg))
-        # print(msg)
-        parse_info = parse_dhcp(msg)
-        offerip, serverip, mac = parse_info['yiaddr'], parse_info['siaddr'], parse_info['mac']
-        # print(offerip)
-        print("[SERVER] offer ip \"{}\" for \"{}\"".format(get_ip_from_bytes(offerip), get_mac_from_bytes(mac)).upper())
-        # print(offerip)
-        request = buildPacket_request(serverip, offerip)
-        # print(server_address)
-        # print(get_ip_from_bytes(offerip))
-        # sock.sendto(request, ('127.0.0.1', 67))
-        sock.sendto(request, server_address)
-        log_message(MessageType.DHCPREQUEST, src='0.0.0.0', dst=server_address[0])
-        print('waiting for ack'.upper())
-        getAck = False
+    while True:
         sock.settimeout(2)
+        discover = buildPacket_discovery(mac)
+        sock.sendto(discover, ('<broadcast>', 68))
+        log_message(MessageType.DHCPDISCOVER, src=get_ip_from_bytes(parse_dhcp(discover)['yiaddr']), dst='255.255.255.255')
+        print('WAITING FOR THE DHCP SERVER...')
+        get_ip = False
+        getAck = False
+        finish = False
+        # timer_thread=threading.Thread(target=discovery_timer,args=(ds_time,))
+        # timer_thread.start()
+        # while dis_time>0:
+
+        # offer
         try:
-            msg, b = sock.recvfrom(4096)
-            # print(b)
-            if msg:
-                print('ACK RECEIVED!')
-                log_message(MessageType.DHCPACK, src=get_ip_from_bytes(offer_info['siaddr']),
-                            dst=get_ip_from_bytes(offer_info['yiaddr']))
-                # print("Ack {}".format(msg))
-                getAck = True
+            msg, server_address = sock.recvfrom(4096)
+
+            offer_info = parse_dhcp(msg)
+            # print((offer_info['siaddr']))
+            # print(server_address)
+            log_message(MessageType.DHCPOFFER, src=server_address[0], dst='255.255.255.255')
         except socket.timeout:
-            print("Time out ...".upper())
-
-        if getAck == False:
-            print("NO ACK FOUNDED")
+            print('NO OFFER RECEIVED!'
+                  'SENDING DISCOVERY MESSAGE AGAIN...')
             # continue
-        else:
-            print("ACK RECEIVED:)")
-            get_ip = True
-            # sys.exit()
+            break
 
-            timer_thread = threading.Thread(target=lease_expire())
-            timer_thread.start()
+        try:
+            data = msg.decode('utf-8')
+            print('[SERVER] ' + data.upper())
+            if "renew" in data:
+                getAck = True
+                get_ip = True
+            if "blocked" or "reserved" in data:
+                print('-'*70)
+                finish = True
+                quit()
+            # print(data)
+        except (UnicodeDecodeError, AttributeError):
+            # print('NOT DECODED')
+            # print(e)
+            # print(pkt_type(msg))
+            # print(msg)
+            parse_info = parse_dhcp(msg)
+            offerip, serverip, mac = parse_info['yiaddr'], parse_info['siaddr'], parse_info['mac']
+            # print(offerip)
+            print("[SERVER] offer ip \"{}\" for \"{}\"".format(get_ip_from_bytes(offerip), get_mac_from_bytes(mac)).upper())
+            # print(offerip)
+            request = buildPacket_request(serverip, offerip)
+            # print(server_address)
+            # print(get_ip_from_bytes(offerip))
+            # sock.sendto(request, ('127.0.0.1', 67))
+            sock.sendto(request, server_address)
+            log_message(MessageType.DHCPREQUEST, src='0.0.0.0', dst=server_address[0])
+            print('waiting for ack'.upper())
+            getAck = False
+            sock.settimeout(2)
+            try:
+                msg, b = sock.recvfrom(4096)
+                # print(b)
+                if msg:
+                    print('ACK RECEIVED!')
+                    log_message(MessageType.DHCPACK, src=get_ip_from_bytes(offer_info['siaddr']),
+                                dst=get_ip_from_bytes(offer_info['yiaddr']))
+                    # print("Ack {}".format(msg))
+                    getAck = True
+            except socket.timeout:
+                print("Time out ...".upper())
+
+            if getAck == False:
+                print("NO ACK FOUNDED")
+                # continue
+            else:
+                print("ACK RECEIVED:)")
+                get_ip = True
+                # sys.exit()
+
+                timer_thread = threading.Thread(target=lease_expire())
+                timer_thread.start()
+                break
 
     return getAck, get_ip, finish
 
@@ -214,15 +227,20 @@ def discovery_timer(initial_interval):
 def lease_expire():
     print("expire timer begin")
     global expire
-    lease = 11
-
-    while lease > 0:
-        mins, secs = divmod(lease, 60)
-        timer = '{:02d}:{:02d}\r'.format(mins, secs)
-        print(timer)
+    lease = 12
+    mins_total, secs_total = divmod(lease, 60)
+    l = 0
+    # while lease > 0:
+    while lease >= l:
+        mins, secs = divmod(l, 60)
+        timer = '\r{:02d}:{:02d} / {:02d}:{:02d}'.format(mins, secs, mins_total, secs_total)
+        print(timer, end='')
+        # print('\r%02d:%02d'%(mins, secs), end='')
+        # print('\r%02d:%02d' % (mins, secs), end='')
         sleep(1)
-        lease -= 1
+        l += 1
     expire=True
+    print('\n' + 50*'-')
 
 
 if __name__ == '__main__':
@@ -248,67 +266,75 @@ if __name__ == '__main__':
 
     getAck, getIp, finish = start_process(mac)
 
-    # offer_ip = ""
-    # flag = True
-    # getAck = False
-    # getIp = False
-    #
-    # prv_dis = INITIAL_INTERVAL
-    # while True:
-    #     timer_thread = threading.Thread(target=discovery_timer, args=(dis_time,))
-    #     timer_thread.start()
-    #
-    #     while dis_time > 0:
-    #         while not getAck:
-    #             getAck, getIp, finish = start_process(mac)
-    #             if finish:
-    #                 sys.exit()
-    #         # timer_thread = threading.Thread(target=lease_expire())
-    #         # timer_thread.start()
-    #
-    #     if dis_time <= 0:
-    #         rand = random.uniform(0, 1)
-    #         print(rand)
-    #         print("Discovery timer finish..Go to begin timer again")
-    #         if getAck == False:
-    #             print("Get ip Not OK..Try again")
-    #             if prv_dis >= BACKOFF_CUTOFF:
-    #                 dis_time = BACKOFF_CUTOFF
-    #                 print("Next discovery time {}".format(dis_time))
-    #             else:
-    #                 generate = prv_dis * 2 * rand
-    #                 print(generate)
-    #                 dis_time = math.floor(generate)
-    #                 print("Next discovery time {}".format(dis_time))
-    #                 prv_dis = dis_time
-    #
-    #         elif getIp == True:
-    #             if expire == True:
-    #                 print("IP expired")
-    #                 expire = False
-    #                 if prv_dis >= BACKOFF_CUTOFF:
-    #                     dis_time = BACKOFF_CUTOFF
-    #                     print("Next discovery time {}".format(dis_time))
-    #                 else:
-    #                     generate = prv_dis * 2 * rand
-    #                     print(generate)
-    #                     dis_time = math.floor(generate)
-    #                     print("Next discovery time {}".format(dis_time))
-    #                     prv_dis = dis_time
-    #             else:
-    #                 while expire == False:
-    #                     pass
-    #                     # print("wait for IP to expire")
-    #                 expire = False
-    #                 if prv_dis >= BACKOFF_CUTOFF:
-    #                     dis_time = BACKOFF_CUTOFF
-    #                     print("Next discovery time {}".format(dis_time))
-    #                 else:
-    #                     generate = prv_dis * 2 * rand
-    #                     print(generate)
-    #                     dis_time = math.floor(generate)
-    #                     print("Next discovery time {}".format(dis_time))
-    #                     prv_dis = dis_time
-    #
-    #     getIp = False
-    #     getAck = False
+    offer_ip = ""
+    flag = True
+    getAck = False
+    getIp = False
+
+    prv_dis = INITIAL_INTERVAL
+    while True:
+        timer_thread = threading.Thread(target=discovery_timer, args=(dis_time,))
+        timer_thread.start()
+
+        while dis_time > 0:
+            while not getAck:
+                getAck, getIp, finish = start_process(mac)
+                if finish:
+                    sys.exit()
+            # timer_thread = threading.Thread(target=lease_expire())
+            # timer_thread.start()
+
+        if dis_time <= 0:
+            print("Discovery time is up!\nupdating timer...".upper())
+            print(' ├─ generating a random number for updating timer...'.upper(), end='')
+            rand = random.uniform(0, 1)
+            print(rand)
+
+            if getAck is False:
+                print(" ├─ Trying again for getting ip address".upper())
+                if prv_dis >= BACKOFF_CUTOFF:
+                    dis_time = BACKOFF_CUTOFF
+                    print(" └─ new discovery timer value: {}".format(dis_time))
+                    print("     └─ BACKOFF_CUTOFF = {}".format(dis_time))
+                else:
+                    generate = prv_dis * 2 * rand
+                    # print(generate)
+                    dis_time = math.floor(generate)
+                    print(" └─ new discovery timer value: {}".format(dis_time))
+                    print("     └─ ⌊ prv_dis × 2 × {} ⌋".format(rand))
+                    prv_dis = dis_time
+
+            elif getIp is True:
+                if expire is True:
+                    print(" ├─ IP expired")
+                    expire = False
+                    if prv_dis >= BACKOFF_CUTOFF:
+                        dis_time = BACKOFF_CUTOFF
+                        print(" └─ new discovery timer value: {}".format(dis_time))
+                        print("     └─ BACKOFF_CUTOFF = {}".format(dis_time))
+                    else:
+                        generate = prv_dis * 2 * rand
+                        # print(generate)
+                        dis_time = math.floor(generate)
+                        print(" └─ new discovery timer value: {}".format(dis_time))
+                        print("     └─ ⌊ prv_dis × 2 × {} ⌋".format(rand))
+                        prv_dis = dis_time
+                else:
+                    while expire is False:
+                        pass
+                        # print("wait for IP to expire")
+                    expire = False
+                    if prv_dis >= BACKOFF_CUTOFF:
+                        dis_time = BACKOFF_CUTOFF
+                        print(" └─ new discovery timer value: {}".format(dis_time))
+                        print("     └─ BACKOFF_CUTOFF = {}".format(dis_time))
+                    else:
+                        generate = prv_dis * 2 * rand
+                        # print(generate)
+                        dis_time = math.floor(generate)
+                        print(" └─ new discovery timer value: {}".format(dis_time))
+                        print("     └─ ⌊ prv_dis × 2 × {} ⌋".format(rand))
+                        prv_dis = dis_time
+
+        getIp = False
+        getAck = False
