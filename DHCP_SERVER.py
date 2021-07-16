@@ -220,25 +220,26 @@ class Server:
                                     if offer_ip in self.OccupyIP and offer_ip in self.waitIP:
                                         continue
                                     else:
-                                        print("CANDIDATE IP: {}".format(offer_ip))
+                                        print("CANDIDATE IP FOR OFFER: {}".format(offer_ip))
                                         self.waitIP.append(offer_ip)
                                         flag = False
 
                                 # print("lets offer to {}".format(get_mac_from_bytes(mac)))
                                 pkt = self.buildPacket_offer(offer_ip, xid, mac)
+                                print(get_ip_from_bytes(parse_dhcp(pkt)['yiaddr']))
                                 self.sock.sendto(pkt, ('255.255.255.255', 67))
                                 log_message(MessageType.DHCPOFFER, src='127.0.0.1',
                                             dst='255.255.255.255')
-                                print('wazaaaaaa')
+                                # print('wazaaaaaa')
                                 msg, client_address = self.sock.recvfrom(4096)
-                                print(client_address)
+                                print('Waiting for request...'.upper())
                                 # msg, client = server.recvfrom(4096)
-                                print('wazaaaaaa')
+                                # print('wazaaaaaa')
                                 request_info = parse_dhcp(msg)
                                 xid, chaddrss = request_info['xid'], request_info['chaddr']
                                 log_message(MessageType.DHCPREQUEST, src=get_ip_from_bytes(request_info['yiaddr']),
                                             dst='255.255.255.255')
-
+                                print('CLIENT REQUESTED FOR \"{}\"'.format(offer_ip))
                                 pkt = self.buildPacket_Ack(offer_ip, xid, mac)
                                 # start lease time timer
                                 time.sleep(5)

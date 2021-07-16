@@ -138,7 +138,8 @@ def start_process(mac):
 
     msg, server_address = sock.recvfrom(4096)
     offer_info = parse_dhcp(msg)
-    # print((offer_info['siaddr']))
+    print((offer_info['siaddr']))
+    print(server_address)
     log_message(MessageType.DHCPOFFER, src=server_address[0], dst='255.255.255.255')
     try:
         data = msg.decode('utf-8')
@@ -151,12 +152,14 @@ def start_process(mac):
             finish = True
             quit()
         # print(data)
-    except (UnicodeDecodeError, AttributeError) as e:
+    except (UnicodeDecodeError, AttributeError):
         # print('NOT DECODED')
         # print(e)
         # print(pkt_type(msg))
+        print(msg)
         parse_info = parse_dhcp(msg)
         offerip, serverip, mac = parse_info['yiaddr'], parse_info['siaddr'], parse_info['mac']
+        print(offerip)
         print("[SERVER] offer ip \"{}\" for \"{}\":".format(get_ip_from_bytes(offerip), get_mac_from_bytes(mac)).upper())
         # print(offerip)
         request = buildPacket_request(serverip, offerip)
