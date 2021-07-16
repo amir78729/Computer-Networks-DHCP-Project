@@ -188,7 +188,7 @@ def start_process(mac):
                 # print(b)
                 if msg:
                     print('ACK RECEIVED!')
-                    log_message(MessageType.DHCPACK, src=get_ip_from_bytes(offer_info['siaddr']),
+                    log_message(MessageType.DHCPACK, src=server_address[0],
                                 dst=get_ip_from_bytes(offer_info['yiaddr']))
                     # print("Ack {}".format(msg))
                     getAck = True
@@ -240,7 +240,7 @@ def lease_expire():
         sleep(1)
         l += 1
     expire=True
-    print('\n' + 50*'-')
+    print('\n' + 70*'-')
 
 
 if __name__ == '__main__':
@@ -301,7 +301,7 @@ if __name__ == '__main__':
                     # print(generate)
                     dis_time = math.floor(generate)
                     print(" └─ new discovery timer value: {}".format(dis_time))
-                    print("     └─ ⌊ prv_dis × 2 × {} ⌋".format(rand))
+                    print("     └─ ⌊ prv_dis × 2 × random ⌋ = ⌊ {} × 2 × {} ⌋ = ⌊{}⌋".format(prv_dis, rand, generate))
                     prv_dis = dis_time
 
             elif getIp is True:
@@ -314,15 +314,13 @@ if __name__ == '__main__':
                         print("     └─ BACKOFF_CUTOFF = {}".format(dis_time))
                     else:
                         generate = prv_dis * 2 * rand
-                        # print(generate)
                         dis_time = math.floor(generate)
                         print(" └─ new discovery timer value: {}".format(dis_time))
-                        print("     └─ ⌊ prv_dis × 2 × {} ⌋".format(rand))
+                        print("     └─ ⌊ prv_dis × 2 × random ⌋ = ⌊ {} × 2 × {} ⌋ = ⌊{}⌋".format(prv_dis, rand, generate))
                         prv_dis = dis_time
                 else:
                     while expire is False:
                         pass
-                        # print("wait for IP to expire")
                     expire = False
                     if prv_dis >= BACKOFF_CUTOFF:
                         dis_time = BACKOFF_CUTOFF
@@ -330,10 +328,9 @@ if __name__ == '__main__':
                         print("     └─ BACKOFF_CUTOFF = {}".format(dis_time))
                     else:
                         generate = prv_dis * 2 * rand
-                        # print(generate)
                         dis_time = math.floor(generate)
                         print(" └─ new discovery timer value: {}".format(dis_time))
-                        print("     └─ ⌊ prv_dis × 2 × {} ⌋".format(rand))
+                        print("     └─ ⌊ prv_dis × 2 × random ⌋ = ⌊ {} × 2 × {} ⌋ = ⌊{}⌋".format(prv_dis, rand, generate))
                         prv_dis = dis_time
 
         getIp = False

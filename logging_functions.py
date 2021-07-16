@@ -10,7 +10,10 @@ class MessageType(enum.Enum):
 
 
 def log_message(typ, src, dst):
-    print('-'*70)
+    if typ.value == 'DHCPDISCOVER':
+        print('=' * 70)
+    else:
+        print('-' * 70)
     if typ.value in ['DHCPDISCOVER', 'DHCPREQUEST']:
         print("[CLIENT → SERVER]({})".format(datetime.datetime.now()))
         print(' ├─ SRC.: {}:68'.format(src))

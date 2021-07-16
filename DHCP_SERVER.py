@@ -179,12 +179,14 @@ class Server:
                     # executor.submit(self.handle_client,client_xid, client_mac, client,server)
                     mac_string = get_mac_from_bytes(mac)
                     print('CLIENT MAC ADDRESS: ' + mac_string)
+                    print('checking mac address'.upper())
                     # print('handle client')
                     if mac not in self.client_ips:
                         # print('mac not in self.client_ips')
                         macUpper = str(mac_string).upper()
                         block = self.block_or_not(macUpper)
                         reserve = self.reserved_or_not(macUpper)
+                        print()
                         if block:
                             print("This client is blocked".upper())
                             string = "You are blocked! "
@@ -227,7 +229,9 @@ class Server:
                                 # print("lets offer to {}".format(get_mac_from_bytes(mac)))
                                 pkt = self.buildPacket_offer(offer_ip, xid, mac)
                                 # print(get_ip_from_bytes(parse_dhcp(pkt)['yiaddr']))
+
                                 self.sock.sendto(pkt, ('255.255.255.255', 67))
+
                                 log_message(MessageType.DHCPOFFER, src='127.0.0.1',
                                             dst='255.255.255.255')
                                 # print('wazaaaaaa')
@@ -247,7 +251,7 @@ class Server:
                                 self.sock.sendto(pkt, ('255.255.255.255', 67))
 
                                 # self.sock.sendto(pkt, ('255.255.255.255', 68))
-                                log_message(MessageType.DHCPACK, src=self.serverIP,
+                                log_message(MessageType.DHCPACK, src='127.0.0.1',
                                             dst=offer_ip)
 
                                 lease_time = self.lease_time
@@ -401,13 +405,13 @@ class Server:
 
     def block_or_not(self, mac):
         block = False
-        print('BLACK LIST:')
+        print(' ├─ BLACK LIST')
         for i in self.data["black_list"]:
             if i == mac:
-                print(' └─ {} (SHOULD BE BLOCKED!)'.format(i))
+                print(' │     └─ {} (SHOULD BE BLOCKED!)'.format(i))
                 block = True
             else:
-                print(' └─ {}'.format(i))
+                print(' │     └─ {}'.format(i))
         # print(self.data["black_list"])
         # print(mac)
         # block = False
@@ -417,18 +421,16 @@ class Server:
 
 
     def reserved_or_not(self, mac):
-        print('RESERVED IP ADDRESSES:')
+        print(' │')
+        print(' └─ RESERVED IP ADDRESSES')
         reserved = False
         for i in self.reserved.keys():
             if i == mac:
-                print(' └─ {} HAS IP {}. (RESERVED!)'.format(i, self.reserved[i]))
+                print('       └─ {} HAS IP {}. (RESERVED!)'.format(i, self.reserved[i]))
                 reserved = True
             else:
-                print(' └─ {} HAS IP {}.'.format(i, self.reserved[i]))
-        # print(self.reserved)
-        # print(mac)
-        # if str(mac) in self.reserved:
-        #     reserved = True
+                print('       └─ {} HAS IP {}.'.format(i, self.reserved[i]))
+
         return reserved
 
 
@@ -440,27 +442,27 @@ class Server:
         #             print(self.Serviced_ClientsInfo_print)
 
 
-    # def lease(self, mac, ip, xid, index):
-    #     timeOut = self.lease_time
-    #     print("lease start for {}".format(mac))
-    #
-    #     while timeOut:
-    #         if mac not in self.client_ips:
-    #             self.client_ips[mac] = ip
-    #             self.OccupyIP.append(ip)
-    #             self.connected_clients_list[mac] = xid
-    #         mins, secs = divmod(timeOut, 60)
-    #         timer = '{:02d}:{:02d}'.format(mins, secs)
-    #
-    #         time.sleep(1)
-    #         timeOut -= 1
-    #         self.Serviced_ClientsInfo_print[index][3] = timeOut
-    #         # print(self.Serviced_ClientsInfo_print)
-    #     print("lease expire for {}".format(mac))
-    #     self.OccupyIP.remove(ip)
-    #     self.waitIP.remove(ip)
-    #     self.connected_clients_list.pop(str(mac))
-    #     self.client_ips.pop(str(mac))
+    def lease(self, mac, ip, xid, index):
+        timeOut = self.lease_time
+        print("lease start for {}".format(mac))
+
+        while timeOut:
+            if mac not in self.client_ips:
+                self.client_ips[mac] = ip
+                self.OccupyIP.append(ip)
+                self.connected_clients_list[mac] = xid
+            mins, secs = divmod(timeOut, 60)
+            timer = '{:02d}:{:02d}'.format(mins, secs)
+
+            time.sleep(1)
+            timeOut -= 1
+            self.Serviced_ClientsInfo_print[index][3] = timeOut
+            # print(self.Serviced_ClientsInfo_print)
+        print("lease expire for {}".format(mac))
+        self.OccupyIP.remove(ip)
+        self.waitIP.remove(ip)
+        self.connected_clients_list.pop(str(mac))
+        self.client_ips.pop(str(mac))
 
 
 # def show(server):
