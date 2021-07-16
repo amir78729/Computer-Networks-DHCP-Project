@@ -226,7 +226,7 @@ class Server:
 
                                 # print("lets offer to {}".format(get_mac_from_bytes(mac)))
                                 pkt = self.buildPacket_offer(offer_ip, xid, mac)
-                                print(get_ip_from_bytes(parse_dhcp(pkt)['yiaddr']))
+                                # print(get_ip_from_bytes(parse_dhcp(pkt)['yiaddr']))
                                 self.sock.sendto(pkt, ('255.255.255.255', 67))
                                 log_message(MessageType.DHCPOFFER, src='127.0.0.1',
                                             dst='255.255.255.255')
@@ -242,14 +242,14 @@ class Server:
                                 print('CLIENT REQUESTED FOR \"{}\"'.format(offer_ip))
                                 pkt = self.buildPacket_Ack(offer_ip, xid, mac)
                                 # start lease time timer
-                                time.sleep(5)
-                                self.sock.sendto(pkt, client_address)
+                                # time.sleep(5)
+                                self.sock.sendto(pkt, ('255.255.255.255', 67))
                                 # self.sock.sendto(pkt, ('255.255.255.255', 68))
                                 log_message(MessageType.DHCPACK, src=self.serverIP,
                                             dst=offer_ip)
 
                                 lease_time = self.lease_time
-                                print(mac)
+                                # print(mac)
                                 # PCName = OuiLookup().query(mac)
                                 # client_info = [PCName, mac, offer_ip, lease_time]
                                 # self.Serviced_ClientsInfo_print.append(client_info)

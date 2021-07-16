@@ -10,7 +10,7 @@ class MessageType(enum.Enum):
 
 
 def log_message(typ, src, dst):
-    print('-'*50)
+    print('-'*70)
     if typ.value in ['DHCPDISCOVER', 'DHCPREQUEST']:
         print("[CLIENT → SERVER]({})".format(datetime.datetime.now()))
         print(' ├─ SRC.: {}:68'.format(src))
@@ -23,7 +23,7 @@ def log_message(typ, src, dst):
         print(' └─ TYP.: {}'.format(typ.value))
     else:
         print('UNKNOWN MESSAGE')
-    print('-' * 50)
+    print('-'*70)
 
 
 def parse_dhcp(p):

@@ -138,8 +138,8 @@ def start_process(mac):
 
     msg, server_address = sock.recvfrom(4096)
     offer_info = parse_dhcp(msg)
-    print((offer_info['siaddr']))
-    print(server_address)
+    # print((offer_info['siaddr']))
+    # print(server_address)
     log_message(MessageType.DHCPOFFER, src=server_address[0], dst='255.255.255.255')
     try:
         data = msg.decode('utf-8')
@@ -148,7 +148,7 @@ def start_process(mac):
             getAck = True
             get_ip = True
         if "blocked" or "reserved" in data:
-            print('-'*50)
+            print('-'*70)
             finish = True
             quit()
         # print(data)
@@ -156,11 +156,11 @@ def start_process(mac):
         # print('NOT DECODED')
         # print(e)
         # print(pkt_type(msg))
-        print(msg)
+        # print(msg)
         parse_info = parse_dhcp(msg)
         offerip, serverip, mac = parse_info['yiaddr'], parse_info['siaddr'], parse_info['mac']
-        print(offerip)
-        print("[SERVER] offer ip \"{}\" for \"{}\":".format(get_ip_from_bytes(offerip), get_mac_from_bytes(mac)).upper())
+        # print(offerip)
+        print("[SERVER] offer ip \"{}\" for \"{}\"".format(get_ip_from_bytes(offerip), get_mac_from_bytes(mac)).upper())
         # print(offerip)
         request = buildPacket_request(serverip, offerip)
         # print(server_address)
@@ -168,11 +168,12 @@ def start_process(mac):
         # sock.sendto(request, ('127.0.0.1', 67))
         sock.sendto(request, server_address)
         log_message(MessageType.DHCPREQUEST, src='0.0.0.0', dst=server_address[0])
+        print('waiting for ack'.upper())
         getAck = False
         sock.settimeout(2)
         try:
             msg, b = sock.recvfrom(4096)
-            print(b)
+            # print(b)
             if msg:
                 print('ACK RECEIVED!')
                 log_message(MessageType.DHCPACK, src=get_ip_from_bytes(offer_info['siaddr']),
