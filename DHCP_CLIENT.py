@@ -135,17 +135,12 @@ def start_process(mac):
         get_ip = False
         getAck = False
         finish = False
-        # timer_thread=threading.Thread(target=discovery_timer,args=(ds_time,))
-        # timer_thread.start()
-        # while dis_time>0:
 
         # offer
         try:
             msg, server_address = sock.recvfrom(4096)
 
             offer_info = parse_dhcp(msg)
-            # print((offer_info['siaddr']))
-            # print(server_address)
             log_message(MessageType.DHCPOFFER, src=server_address[0], dst='255.255.255.255')
         except socket.timeout:
             print('NO OFFER RECEIVED!'
@@ -163,21 +158,11 @@ def start_process(mac):
                 print('-'*70)
                 finish = True
                 quit()
-            # print(data)
         except (UnicodeDecodeError, AttributeError):
-            # print('NOT DECODED')
-            # print(e)
-            # print(pkt_type(msg))
-            # print(msg)
             parse_info = parse_dhcp(msg)
             offerip, serverip, mac = parse_info['yiaddr'], parse_info['siaddr'], parse_info['mac']
-            # print(offerip)
             print("[SERVER] offer ip \"{}\" for \"{}\"".format(get_ip_from_bytes(offerip), get_mac_from_bytes(mac)).upper())
-            # print(offerip)
             request = buildPacket_request(serverip, offerip)
-            # print(server_address)
-            # print(get_ip_from_bytes(offerip))
-            # sock.sendto(request, ('127.0.0.1', 67))
             sock.sendto(request, server_address)
             log_message(MessageType.DHCPREQUEST, src='0.0.0.0', dst=server_address[0])
             print('waiting for ack'.upper())
@@ -185,12 +170,10 @@ def start_process(mac):
             sock.settimeout(2)
             try:
                 msg, b = sock.recvfrom(4096)
-                # print(b)
                 if msg:
                     print('ACK RECEIVED!')
                     log_message(MessageType.DHCPACK, src=server_address[0],
                                 dst=get_ip_from_bytes(offer_info['yiaddr']))
-                    # print("Ack {}".format(msg))
                     getAck = True
             except socket.timeout:
                 print("Time out ...".upper())
@@ -230,13 +213,10 @@ def lease_expire():
     lease = 12
     mins_total, secs_total = divmod(lease, 60)
     l = 0
-    # while lease > 0:
     while lease >= l:
         mins, secs = divmod(l, 60)
         timer = '\r{:02d}:{:02d} / {:02d}:{:02d}'.format(mins, secs, mins_total, secs_total)
         print(timer, end='')
-        # print('\r%02d:%02d'%(mins, secs), end='')
-        # print('\r%02d:%02d' % (mins, secs), end='')
         sleep(1)
         l += 1
     expire=True
@@ -244,19 +224,6 @@ def lease_expire():
 
 
 if __name__ == '__main__':
-
-    # def discovery_timer(initial_interval):
-    #     print("discovery timer begin")
-    #     global dis_time
-    #     dis_time = initial_interval
-    #
-    #     while dis_time:
-    #         mins, secs = divmod(dis_time, 60)
-    #         timer = '{:02d}:{:02d}'.format(mins, secs)
-    #         # print(timer)
-    #         sleep(1)
-    #         dis_time -= 1
-
 
     mac = ':'.join(['{:02x}'.format((uuid.getnode() >> ele) & 0xff) for ele in range(0, 8 * 6, 8)][::-1]).upper()
     print(mac.replace(":", ""))
@@ -281,8 +248,6 @@ if __name__ == '__main__':
                 getAck, getIp, finish = start_process(mac)
                 if finish:
                     sys.exit()
-            # timer_thread = threading.Thread(target=lease_expire())
-            # timer_thread.start()
 
         if dis_time <= 0:
             print("Discovery time is up!\nupdating timer...".upper())
@@ -298,7 +263,6 @@ if __name__ == '__main__':
                     print("     └─ BACKOFF_CUTOFF = {}".format(dis_time))
                 else:
                     generate = prv_dis * 2 * rand
-                    # print(generate)
                     dis_time = math.floor(generate)
                     print(" └─ new discovery timer value: {}".format(dis_time))
                     print("     └─ ⌊ prv_dis × 2 × random ⌋ = ⌊ {} × 2 × {} ⌋ = ⌊{}⌋".format(prv_dis, rand, generate))
