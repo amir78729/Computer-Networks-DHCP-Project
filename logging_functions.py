@@ -9,7 +9,7 @@ class MessageType(enum.Enum):
     DHCPACK = 'DHCPACK'
 
 
-def log_message(typ, src, dst):
+def log_message(typ, src, dst): 
     if typ.value == 'DHCPDISCOVER':
         print('=' * 70)
     else:
